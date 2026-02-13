@@ -210,6 +210,34 @@
         </div>
 
         <div class="mt-8 bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
+                <div>
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <span>🎯</span> 高标图 - 情绪仪表盘
+                    </h3>
+                    <p class="text-gray-500 text-sm mt-1">最高连板股分时走势对比 · 一眼看出情绪强弱</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                        <span class="text-xs text-gray-400">缩量封死</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-yellow-500"></span>
+                        <span class="text-xs text-gray-400">开口回封</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                        <span class="text-xs text-gray-400">炸板跳水</span>
+                    </div>
+                </div>
+            </div>
+            <div id="highBoardContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="text-gray-500 text-center py-8 col-span-full">加载中...</div>
+            </div>
+        </div>
+
+        <div class="mt-8 bg-gray-800 rounded-xl p-6 border border-gray-700">
             <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                 <span>📊</span> 连板高度排行图
             </h3>
@@ -732,6 +760,7 @@
             renderBoardDistribution(stockData);
             renderHotSectors(stockData);
             drawBoardChart(stockData.slice(0, 20));
+            renderHighBoardChart(stockData.slice(0, 6));
             
             trendData = await getTrendData(currentTrendDays);
             drawTrendChart(trendData);
@@ -747,6 +776,7 @@
             renderBoardDistribution(stockData);
             renderHotSectors(stockData);
             drawBoardChart(stockData.slice(0, 20));
+            renderHighBoardChart(stockData.slice(0, 6));
             
             trendData = await getTrendData(currentTrendDays);
             drawTrendChart(trendData);
@@ -876,12 +906,240 @@
             };
         }
 
+        async function renderHighBoardChart(stocks) {
+            const container = document.getElementById('highBoardContainer');
+            
+            if (stocks.length === 0) {
+                container.innerHTML = '<div class="text-gray-500 text-center py-8 col-span-full">暂无高标股数据</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            
+            for (const stock of stocks) {
+                const cardHtml = `
+                    <div class="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <span class="font-bold text-lg">${stock.name}</span>
+                                <span class="text-gray-400 text-sm ml-2">${stock.code}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="bg-gradient-to-r from-red-500 to-orange-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                                    ${stock.board}连板
+                                </span>
+                                <span id="status-${stock.code}" class="w-3 h-3 rounded-full bg-gray-500"></span>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <canvas id="chart-${stock.code}" class="w-full" style="height: 120px;"></canvas>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500 mt-2">
+                            <span>09:30</span>
+                            <span>11:30</span>
+                            <span>13:00</span>
+                            <span>15:00</span>
+                        </div>
+                        <div id="info-${stock.code}" class="text-xs text-gray-400 mt-2 text-center">
+                            加载分时数据...
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += cardHtml;
+            }
+            
+            for (const stock of stocks) {
+                try {
+                    await fetchAndDrawIntraday(stock);
+                } catch (e) {
+                    console.error(`获取${stock.name}分时数据失败:`, e);
+                    const infoEl = document.getElementById(`info-${stock.code}`);
+                    if (infoEl) {
+                        infoEl.textContent = '分时数据加载失败';
+                    }
+                }
+            }
+        }
+
+        async function fetchAndDrawIntraday(stock) {
+            const market = stock.code.startsWith('6') ? 1 : 0;
+            const url = `https://push2his.eastmoney.com/api/qt/stock/trends2/get?secid=${market}.${stock.code}&fields1=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13&fields2=f51,f52,f53,f54,f55,f56,f57,f58&iscr=0`;
+            
+            const response = await fetch(url);
+            const result = await response.json();
+            
+            if (result && result.data && result.data.trends) {
+                const preClose = result.data.preClose;
+                const trends = result.data.trends;
+                
+                const intradayData = trends.map(t => {
+                    const parts = t.split(',');
+                    const time = parts[0].split(' ')[1];
+                    const price = parseFloat(parts[2]);
+                    const avgPrice = parseFloat(parts[7]);
+                    const volume = parseInt(parts[5]);
+                    return { time, price, avgPrice, volume };
+                });
+                
+                const limitUpPrice = preClose * 1.1;
+                const limitDownPrice = preClose * 0.9;
+                
+                let status = 'unknown';
+                let statusColor = 'bg-gray-500';
+                let statusText = '未知';
+                
+                const lastData = intradayData[intradayData.length - 1];
+                const lastPrice = lastData.price;
+                const priceDiff = Math.abs(lastPrice - limitUpPrice);
+                
+                if (priceDiff < 0.01) {
+                    const recentVolumes = intradayData.slice(-30).map(d => d.volume);
+                    const avgVolume = recentVolumes.reduce((a, b) => a + b, 0) / recentVolumes.length;
+                    const lastVolume = lastData.volume;
+                    
+                    if (lastVolume < avgVolume * 0.3) {
+                        status = 'sealed';
+                        statusColor = 'bg-green-500';
+                        statusText = '缩量封死';
+                    } else {
+                        status = 'reopened';
+                        statusColor = 'bg-yellow-500';
+                        statusText = '开口回封';
+                    }
+                } else if (lastPrice < limitUpPrice * 0.98) {
+                    status = 'broken';
+                    statusColor = 'bg-red-500';
+                    statusText = '炸板跳水';
+                } else {
+                    status = 'near';
+                    statusColor = 'bg-orange-500';
+                    statusText = '接近涨停';
+                }
+                
+                const statusEl = document.getElementById(`status-${stock.code}`);
+                if (statusEl) {
+                    statusEl.className = `w-3 h-3 rounded-full ${statusColor}`;
+                }
+                
+                const infoEl = document.getElementById(`info-${stock.code}`);
+                if (infoEl) {
+                    const changePercent = ((lastPrice - preClose) / preClose * 100).toFixed(2);
+                    infoEl.innerHTML = `现价: ¥${lastPrice.toFixed(2)} | 涨幅: <span class="${changePercent >= 0 ? 'text-red-400' : 'text-green-400'}">${changePercent >= 0 ? '+' : ''}${changePercent}%</span> | ${statusText}`;
+                }
+                
+                drawIntradayChart(stock.code, intradayData, preClose, limitUpPrice);
+            }
+        }
+
+        function drawIntradayChart(code, data, preClose, limitUpPrice) {
+            const canvas = document.getElementById(`chart-${code}`);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            const width = rect.width;
+            const height = rect.height;
+            const padding = { top: 5, right: 5, bottom: 5, left: 5 };
+            const chartWidth = width - padding.left - padding.right;
+            const chartHeight = height - padding.top - padding.bottom;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            const prices = data.map(d => d.price);
+            const minPrice = Math.min(...prices, preClose * 0.9);
+            const maxPrice = Math.max(...prices, limitUpPrice * 1.01);
+            const range = maxPrice - minPrice;
+            
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 0.5;
+            ctx.setLineDash([2, 2]);
+            
+            const limitUpY = padding.top + chartHeight - ((limitUpPrice - minPrice) / range) * chartHeight;
+            ctx.beginPath();
+            ctx.moveTo(padding.left, limitUpY);
+            ctx.lineTo(width - padding.right, limitUpY);
+            ctx.stroke();
+            
+            ctx.fillStyle = '#EF4444';
+            ctx.font = '9px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText('涨停', width - padding.right - 2, limitUpY - 2);
+            
+            const preCloseY = padding.top + chartHeight - ((preClose - minPrice) / range) * chartHeight;
+            ctx.strokeStyle = '#6B7280';
+            ctx.beginPath();
+            ctx.moveTo(padding.left, preCloseY);
+            ctx.lineTo(width - padding.right, preCloseY);
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+            
+            const gradient = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
+            gradient.addColorStop(0, 'rgba(239, 68, 68, 0.2)');
+            gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
+            
+            ctx.beginPath();
+            ctx.moveTo(padding.left, height - padding.bottom);
+            
+            data.forEach((d, i) => {
+                const x = padding.left + (chartWidth / (data.length - 1)) * i;
+                const y = padding.top + chartHeight - ((d.price - minPrice) / range) * chartHeight;
+                ctx.lineTo(x, y);
+            });
+            
+            ctx.lineTo(width - padding.right, height - padding.bottom);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.strokeStyle = '#EF4444';
+            ctx.lineWidth = 1.5;
+            
+            data.forEach((d, i) => {
+                const x = padding.left + (chartWidth / (data.length - 1)) * i;
+                const y = padding.top + chartHeight - ((d.price - minPrice) / range) * chartHeight;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.strokeStyle = '#FBBF24';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            
+            data.forEach((d, i) => {
+                const x = padding.left + (chartWidth / (data.length - 1)) * i;
+                const y = padding.top + chartHeight - ((d.avgPrice - minPrice) / range) * chartHeight;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
         window.addEventListener('resize', function() {
             if (trendData.length > 0) {
                 drawTrendChart(trendData);
             }
             if (stockData.length > 0) {
                 drawBoardChart(stockData.slice(0, 20));
+                renderHighBoardChart(stockData.slice(0, 6));
             }
         });
 
