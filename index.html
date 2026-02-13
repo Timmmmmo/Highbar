@@ -219,39 +219,6 @@
         let stockData = [];
         let currentFilter = null;
 
-        const mockData = [
-            { code: '001368', name: '中祺集团', board: 12, price: 42.80, change: 10.02, sector: '机器人', status: '正常', firstBoard: '2025-01-15' },
-            { code: '001355', name: '川宁股份', board: 11, price: 28.50, change: 10.04, sector: '医药', status: '正常', firstBoard: '2025-01-16' },
-            { code: '301571', name: '多浦乐', board: 10, price: 62.30, change: 20.00, sector: '次新股', status: '正常', firstBoard: '2025-01-20' },
-            { code: '002190', name: '集成轨道', board: 10, price: 18.90, change: 10.00, sector: '高铁', status: '正常', firstBoard: '2025-01-17' },
-            { code: '002980', name: '华盛股份', board: 9, price: 35.60, change: 9.99, sector: '消费电子', status: '正常', firstBoard: '2025-01-21' },
-            { code: '603106', name: '永达股份', board: 9, price: 12.40, change: 10.02, sector: '汽车零部件', status: '正常', firstBoard: '2025-01-22' },
-            { code: '301571', name: '多浦乐', board: 8, price: 62.30, change: 20.00, sector: '次新股', status: '新开', firstBoard: '2025-01-20' },
-            { code: '002708', name: '光洋股份', board: 8, price: 15.80, change: 10.03, sector: '汽车零部件', status: '正常', firstBoard: '2025-01-23' },
-            { code: '301308', name: '佳缘科技', board: 8, price: 45.20, change: 20.00, sector: '军工', status: '正常', firstBoard: '2025-01-24' },
-            { code: '000504', name: '南华生物', board: 7, price: 22.50, change: 10.02, sector: '生物医药', status: '正常', firstBoard: '2025-01-25' },
-            { code: '002995', name: '天地在线', board: 7, price: 38.90, change: 10.01, sector: '互联网', status: '正常', firstBoard: '2025-01-26' },
-            { code: '300454', name: '网宿科技', board: 7, price: 18.60, change: 20.00, sector: '算力', status: '正常', firstBoard: '2025-01-27' },
-            { code: '603918', name: '金桥信息', board: 6, price: 28.70, change: 10.02, sector: '软件服务', status: '正常', firstBoard: '2025-01-28' },
-            { code: '002195', name: '二三四五', board: 6, price: 8.90, change: 10.01, sector: '互联网', status: '正常', firstBoard: '2025-01-29' },
-            { code: '300624', name: '万兴科技', board: 6, price: 92.50, change: 20.00, sector: 'AI应用', status: '正常', firstBoard: '2025-01-30' },
-            { code: '300542', name: '吉特电气', board: 5, price: 35.20, change: 20.00, sector: '电网设备', status: '正常', firstBoard: '2025-01-31' },
-            { code: '002447', name: '晨光新材', board: 5, price: 18.60, change: 10.06, sector: '化工', status: '正常', firstBoard: '2025-02-01' },
-            { code: '301398', name: '万邦医药', board: 5, price: 42.80, change: 20.00, sector: '医药', status: '新开', firstBoard: '2025-02-03' },
-            { code: '002949', name: '高斯贝尔', board: 4, price: 12.50, change: 10.04, sector: '电子', status: '正常', firstBoard: '2025-02-04' },
-            { code: '300808', name: '浩云科技', board: 4, price: 15.80, change: 20.00, sector: '物联网', status: '正常', firstBoard: '2025-02-05' },
-            { code: '002851', name: '麦格米特', board: 4, price: 42.30, change: 10.00, sector: '电力设备', status: '正常', firstBoard: '2025-02-06' },
-            { code: '300166', name: '东方国信', board: 4, price: 18.90, change: 20.00, sector: '大数据', status: '正常', firstBoard: '2025-02-07' },
-            { code: '603527', name: '众源新材', board: 3, price: 22.60, change: 10.02, sector: '有色金属', status: '正常', firstBoard: '2025-02-08' },
-            { code: '300953', name: '美尔雅', board: 3, price: 8.50, change: 10.00, sector: '纺织服装', status: '正常', firstBoard: '2025-02-10' },
-            { code: '002562', name: '兄弟科技', board: 3, price: 6.80, change: 10.04, sector: '化工', status: '正常', firstBoard: '2025-02-11' },
-            { code: '301399', name: '盈美斯科技', board: 3, price: 38.90, change: 20.00, sector: '电子', status: '新开', firstBoard: '2025-02-12' },
-            { code: '603777', name: '来伊份', board: 3, price: 18.20, change: 10.03, sector: '食品饮料', status: '正常', firstBoard: '2025-02-13' },
-            { code: '002796', name: '世嘉股份', board: 2, price: 22.50, change: 10.02, sector: '专用设备', status: '正常', firstBoard: '2025-02-14' },
-            { code: '300931', name: '通用电梯', board: 2, price: 12.80, change: 20.00, sector: '电梯', status: '正常', firstBoard: '2025-02-15' },
-            { code: '603868', name: 'ShiP', board: 2, price: 58.60, change: 10.01, sector: '化妆品', status: '正常', firstBoard: '2025-02-16' },
-        ];
-
         // API地址配置
         // 本地开发: http://localhost:5000
         // 生产环境: https://timzhao.pythonanywhere.com
@@ -260,29 +227,20 @@
             : 'https://timzhao.pythonanywhere.com';
 
         function getStockData() {
-            return new Promise(async (resolve) => {
-                const timeoutMs = 8000; // 8秒超时
-                
+            return new Promise(async (resolve, reject) => {
                 try {
-                    const fetchPromise = fetch(`${API_BASE}/api/stocks`);
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('timeout')), timeoutMs)
-                    );
-                    
-                    const response = await Promise.race([fetchPromise, timeoutPromise]);
+                    const response = await fetch(`${API_BASE}/api/stocks`);
                     
                     if (response.ok) {
                         const data = await response.json();
-                        if (data && data.length > 0) {
-                            resolve(data);
-                            return;
-                        }
+                        resolve(data);
+                        return;
                     }
+                    
+                    reject(new Error('API请求失败'));
                 } catch (e) {
-                    console.log('获取数据失败，使用模拟数据:', e.message);
+                    reject(e);
                 }
-                
-                resolve(mockData);
             });
         }
 
@@ -425,31 +383,39 @@
             }).join('');
         }
 
-        function renderTrendChart(data) {
+        async function renderTrendChart() {
             const container = document.getElementById('trendChart');
-            const days = 30;
-            const trendData = [];
             
-            for (let i = days - 1; i >= 0; i--) {
-                const date = new Date();
-                date.setDate(date.getDate() - i);
-                const dateStr = date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-                
-                const count = Math.floor(Math.random() * 30) + 20;
-                trendData.push({ date: dateStr, count });
+            try {
+                const response = await fetch(`${API_BASE}/api/trend`);
+                if (response.ok) {
+                    const trendData = await response.json();
+                    
+                    if (!trendData || trendData.length === 0) {
+                        container.innerHTML = '<div class="text-gray-500 text-center py-4">暂无数据</div>';
+                        return;
+                    }
+                    
+                    const maxCount = Math.max(...trendData.map(d => d.count), 1);
+                    
+                    container.innerHTML = trendData.map(d => {
+                        const height = d.count > 0 ? (d.count / maxCount) * 100 : 2;
+                        const date = new Date(d.date);
+                        const dateStr = date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+                        return `
+                            <div class="flex-1 flex flex-col items-center gap-1">
+                                <div class="w-full bg-gradient-to-t from-red-500 to-orange-500 rounded-t transition-all hover:from-red-400 hover:to-orange-400" style="height: ${height}%" title="${d.count}只涨停"></div>
+                                <span class="text-xs text-gray-500">${dateStr.slice(-5)}</span>
+                            </div>
+                        `;
+                    }).join('');
+                    return;
+                }
+            } catch (e) {
+                console.log('获取趋势数据失败:', e.message);
             }
             
-            const maxCount = Math.max(...trendData.map(d => d.count));
-            
-            container.innerHTML = trendData.map(d => {
-                const height = (d.count / maxCount) * 100;
-                return `
-                    <div class="flex-1 flex flex-col items-center gap-1">
-                        <div class="w-full bg-gradient-to-t from-red-500 to-orange-500 rounded-t" style="height: ${height}%"></div>
-                        <span class="text-xs text-gray-500">${d.date.slice(-3)}</span>
-                    </div>
-                `;
-            }).join('');
+            container.innerHTML = '<div class="text-gray-500 text-center py-4">加载失败</div>';
         }
 
         function filterByBoard(minBoard) {
@@ -497,7 +463,7 @@
             updateStats(stockData);
             renderBoardDistribution(stockData);
             renderHotSectors(stockData);
-            renderTrendChart(stockData);
+            renderTrendChart();
             
             icon.classList.remove('auto-refresh');
         }
@@ -509,7 +475,7 @@
             renderStockList(stockData);
             renderBoardDistribution(stockData);
             renderHotSectors(stockData);
-            renderTrendChart(stockData);
+            renderTrendChart();
             
             setInterval(refreshData, 60000);
         }
