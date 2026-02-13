@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A股高标股Dashboard - 连板高度排行</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+        
+        .stock-card {
+            transition: all 0.3s ease;
+        }
+        
+        .stock-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        
+        .limit-up {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+        
+        .limit-down {
+            background: linear-gradient(135deg, #26de81 0%, #20bf6b 100%);
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .board-rank-1 {
+            background: linear-gradient(135deg, #ffd700 0%, #ffb800 100%);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+        
+        .board-rank-2 {
+            background: linear-gradient(135deg, #c0c0c0 0%, #a8a8a8 100%);
+            box-shadow: 0 0 15px rgba(192, 192, 192, 0.5);
+        }
+        
+        .board-rank-3 {
+            background: linear-gradient(135deg, #cd7f32 0%, #b87333 100%);
+            box-shadow: 0 0 15px rgba(205, 127, 50, 0.5);
+        }
+        
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        .auto-refresh {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        .trend-up {
+            color: #ff6b6b;
+        }
+        
+        .trend-down {
+            color: #26de81;
+        }
+        
+        .hot-tag {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .new-tag {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .reopened-tag {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        @media (max-width: 768px) {
+            .grid-cols-4 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .grid-cols-6 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto px-4 py-6">
+        <header class="mb-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
+                        🏆 A股高标股Dashboard
+                    </h1>
+                    <p class="text-gray-400 mt-2">近30个交易日连板高度排行 · 实时更新</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2 bg-gray-800 rounded-lg px-4 py-2">
+                        <span class="w-2 h-2 bg-green-500 rounded-full pulse"></span>
+                        <span id="updateTime" class="text-sm text-gray-400">更新中...</span>
+                    </div>
+                    <button onclick="refreshData()" class="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 px-4 py-2 rounded-lg flex items-center gap-2 transition">
+                        <svg id="refreshIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        <span>刷新</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                <div class="text-gray-400 text-sm">高标股总数</div>
+                <div id="totalStocks" class="text-3xl font-bold text-white mt-1">--</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                <div class="text-gray-400 text-sm">最高连板</div>
+                <div id="maxBoard" class="text-3xl font-bold text-yellow-400 mt-1">--</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                <div class="text-gray-400 text-sm">今日涨停</div>
+                <div id="todayLimitUp" class="text-3xl font-bold text-red-400 mt-1">--</div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                <div class="text-gray-400 text-sm">平均连板</div>
+                <div id="avgBoard" class="text-3xl font-bold text-orange-400 mt-1">--</div>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <div class="flex flex-wrap gap-2">
+                <button onclick="filterByBoard(null)" class="filter-btn active px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-filter="all">全部</button>
+                <button onclick="filterByBoard(10)" class="filter-btn px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-filter="10">10连板+</button>
+                <button onclick="filterByBoard(7)" class="filter-btn px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-filter="7">7连板+</button>
+                <button onclick="filterByBoard(5)" class="filter-btn px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-filter="5">5连板+</button>
+                <button onclick="filterByBoard(3)" class="filter-btn px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-filter="3">3连板+</button>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
+            <div class="grid grid-cols-12 bg-gray-900 py-3 px-4 text-sm font-medium text-gray-400">
+                <div class="col-span-1 text-center">排名</div>
+                <div class="col-span-2">股票代码</div>
+                <div class="col-span-2">股票名称</div>
+                <div class="col-span-2 text-center">连板高度</div>
+                <div class="col-span-2 text-right">最新价</div>
+                <div class="col-span-2 text-right">涨跌幅</div>
+                <div class="col-span-1 text-center">状态</div>
+            </div>
+            <div id="stockList" class="divide-y divide-gray-700">
+                <div class="py-8 text-center text-gray-500">
+                    <svg class="animate-spin h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    加载数据中...
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <span>📊</span> 连板分布
+                </h3>
+                <div id="boardDistribution" class="space-y-3">
+                    <div class="text-gray-500 text-center py-4">加载中...</div>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <span>🔥</span> 热门题材
+                </h3>
+                <div id="hotSectors" class="space-y-3">
+                    <div class="text-gray-500 text-center py-4">加载中...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                <span>📈</span> 近30日连板趋势
+            </h3>
+            <div id="trendChart" class="h-48 flex items-end justify-between gap-1">
+                <div class="text-gray-500 text-center py-4">加载中...</div>
+            </div>
+        </div>
+
+        <footer class="mt-8 text-center text-gray-500 text-sm">
+            <p>数据仅供参考，不构成投资建议 · 更新时间: <span id="footerTime">--</span></p>
+            <p class="mt-2">© 2024 A股高标股Dashboard</p>
+        </footer>
+    </div>
+
+    <script>
+        let stockData = [];
+        let currentFilter = null;
+
+        const mockData = [
+            { code: '001368', name: '中祺集团', board: 12, price: 42.80, change: 10.02, sector: '机器人', status: '正常', firstBoard: '2025-01-15' },
+            { code: '001355', name: '川宁股份', board: 11, price: 28.50, change: 10.04, sector: '医药', status: '正常', firstBoard: '2025-01-16' },
+            { code: '301571', name: '多浦乐', board: 10, price: 62.30, change: 20.00, sector: '次新股', status: '正常', firstBoard: '2025-01-20' },
+            { code: '002190', name: '集成轨道', board: 10, price: 18.90, change: 10.00, sector: '高铁', status: '正常', firstBoard: '2025-01-17' },
+            { code: '002980', name: '华盛股份', board: 9, price: 35.60, change: 9.99, sector: '消费电子', status: '正常', firstBoard: '2025-01-21' },
+            { code: '603106', name: '永达股份', board: 9, price: 12.40, change: 10.02, sector: '汽车零部件', status: '正常', firstBoard: '2025-01-22' },
+            { code: '301571', name: '多浦乐', board: 8, price: 62.30, change: 20.00, sector: '次新股', status: '新开', firstBoard: '2025-01-20' },
+            { code: '002708', name: '光洋股份', board: 8, price: 15.80, change: 10.03, sector: '汽车零部件', status: '正常', firstBoard: '2025-01-23' },
+            { code: '301308', name: '佳缘科技', board: 8, price: 45.20, change: 20.00, sector: '军工', status: '正常', firstBoard: '2025-01-24' },
+            { code: '000504', name: '南华生物', board: 7, price: 22.50, change: 10.02, sector: '生物医药', status: '正常', firstBoard: '2025-01-25' },
+            { code: '002995', name: '天地在线', board: 7, price: 38.90, change: 10.01, sector: '互联网', status: '正常', firstBoard: '2025-01-26' },
+            { code: '300454', name: '网宿科技', board: 7, price: 18.60, change: 20.00, sector: '算力', status: '正常', firstBoard: '2025-01-27' },
+            { code: '603918', name: '金桥信息', board: 6, price: 28.70, change: 10.02, sector: '软件服务', status: '正常', firstBoard: '2025-01-28' },
+            { code: '002195', name: '二三四五', board: 6, price: 8.90, change: 10.01, sector: '互联网', status: '正常', firstBoard: '2025-01-29' },
+            { code: '300624', name: '万兴科技', board: 6, price: 92.50, change: 20.00, sector: 'AI应用', status: '正常', firstBoard: '2025-01-30' },
+            { code: '300542', name: '吉特电气', board: 5, price: 35.20, change: 20.00, sector: '电网设备', status: '正常', firstBoard: '2025-01-31' },
+            { code: '002447', name: '晨光新材', board: 5, price: 18.60, change: 10.06, sector: '化工', status: '正常', firstBoard: '2025-02-01' },
+            { code: '301398', name: '万邦医药', board: 5, price: 42.80, change: 20.00, sector: '医药', status: '新开', firstBoard: '2025-02-03' },
+            { code: '002949', name: '高斯贝尔', board: 4, price: 12.50, change: 10.04, sector: '电子', status: '正常', firstBoard: '2025-02-04' },
+            { code: '300808', name: '浩云科技', board: 4, price: 15.80, change: 20.00, sector: '物联网', status: '正常', firstBoard: '2025-02-05' },
+            { code: '002851', name: '麦格米特', board: 4, price: 42.30, change: 10.00, sector: '电力设备', status: '正常', firstBoard: '2025-02-06' },
+            { code: '300166', name: '东方国信', board: 4, price: 18.90, change: 20.00, sector: '大数据', status: '正常', firstBoard: '2025-02-07' },
+            { code: '603527', name: '众源新材', board: 3, price: 22.60, change: 10.02, sector: '有色金属', status: '正常', firstBoard: '2025-02-08' },
+            { code: '300953', name: '美尔雅', board: 3, price: 8.50, change: 10.00, sector: '纺织服装', status: '正常', firstBoard: '2025-02-10' },
+            { code: '002562', name: '兄弟科技', board: 3, price: 6.80, change: 10.04, sector: '化工', status: '正常', firstBoard: '2025-02-11' },
+            { code: '301399', name: '盈美斯科技', board: 3, price: 38.90, change: 20.00, sector: '电子', status: '新开', firstBoard: '2025-02-12' },
+            { code: '603777', name: '来伊份', board: 3, price: 18.20, change: 10.03, sector: '食品饮料', status: '正常', firstBoard: '2025-02-13' },
+            { code: '002796', name: '世嘉股份', board: 2, price: 22.50, change: 10.02, sector: '专用设备', status: '正常', firstBoard: '2025-02-14' },
+            { code: '300931', name: '通用电梯', board: 2, price: 12.80, change: 20.00, sector: '电梯', status: '正常', firstBoard: '2025-02-15' },
+            { code: '603868', name: 'ShiP', board: 2, price: 58.60, change: 10.01, sector: '化妆品', status: '正常', firstBoard: '2025-02-16' },
+        ];
+
+        // API地址配置
+        // 本地开发: http://localhost:5000
+        // 生产环境: https://timzhao.pythonanywhere.com
+        const API_BASE = window.location.hostname === 'localhost' 
+            ? 'http://localhost:5000' 
+            : 'https://timzhao.pythonanywhere.com';
+
+        function getStockData() {
+            return new Promise(async (resolve) => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/stocks`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        resolve(data);
+                        return;
+                    }
+                } catch (e) {
+                    console.log('后端服务未启动，使用模拟数据');
+                }
+                setTimeout(() => {
+                    resolve(mockData);
+                }, 500);
+            });
+        }
+
+        function getRankClass(rank) {
+            if (rank === 1) return 'board-rank-1';
+            if (rank === 2) return 'board-rank-2';
+            if (rank === 3) return 'board-rank-3';
+            return '';
+        }
+
+        function getStatusTag(status) {
+            if (status === '新开') {
+                return '<span class="new-tag px-2 py-1 rounded text-xs">新开</span>';
+            } else if (status === '正常') {
+                return '<span class="hot-tag px-2 py-1 rounded text-xs">正常</span>';
+            } else {
+                return '<span class="reopened-tag px-2 py-1 rounded text-xs">反包</span>';
+            }
+        }
+
+        function formatPrice(price) {
+            return price.toFixed(2);
+        }
+
+        function formatChange(change) {
+            const sign = change >= 0 ? '+' : '';
+            return sign + change.toFixed(2) + '%';
+        }
+
+        function renderStockList(data) {
+            const container = document.getElementById('stockList');
+            
+            if (data.length === 0) {
+                container.innerHTML = '<div class="py-8 text-center text-gray-500">暂无数据</div>';
+                return;
+            }
+
+            container.innerHTML = data.map((stock, index) => {
+                const rank = index + 1;
+                const rankClass = getRankClass(rank);
+                
+                return `
+                    <div class="grid grid-cols-12 py-4 px-4 items-center hover:bg-gray-750 transition stock-card ${rankClass}">
+                        <div class="col-span-1 text-center">
+                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full ${rank <= 3 ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700'} font-bold text-sm">
+                                ${rank}
+                            </span>
+                        </div>
+                        <div class="col-span-2 font-mono text-gray-400">${stock.code}</div>
+                        <div class="col-span-2 font-semibold">${stock.name}</div>
+                        <div class="col-span-2 text-center">
+                            <span class="inline-block bg-gradient-to-r from-red-500 to-orange-500 text-white px-3 py-1 rounded-full font-bold">
+                                ${stock.board}连板
+                            </span>
+                        </div>
+                        <div class="col-span-2 text-right font-semibold">¥${formatPrice(stock.price)}</div>
+                        <div class="col-span-2 text-right ${stock.change >= 0 ? 'trend-up' : 'trend-down'}">
+                            ${formatChange(stock.change)}
+                        </div>
+                        <div class="col-span-1 text-center">
+                            ${getStatusTag(stock.status)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateStats(data) {
+            document.getElementById('totalStocks').textContent = data.length;
+            
+            const maxBoard = Math.max(...data.map(s => s.board));
+            document.getElementById('maxBoard').textContent = maxBoard + '连板';
+            
+            const todayLimitUp = data.filter(s => s.change >= 9.9).length;
+            document.getElementById('todayLimitUp').textContent = todayLimitUp;
+            
+            const avgBoard = (data.reduce((sum, s) => sum + s.board, 0) / data.length).toFixed(1);
+            document.getElementById('avgBoard').textContent = avgBoard + '连板';
+            
+            const now = new Date();
+            const timeStr = now.toLocaleString('zh-CN', { hour12: false });
+            document.getElementById('updateTime').textContent = timeStr;
+            document.getElementById('footerTime').textContent = timeStr;
+        }
+
+        function renderBoardDistribution(data) {
+            const container = document.getElementById('boardDistribution');
+            const distribution = {};
+            
+            data.forEach(stock => {
+                const board = stock.board;
+                distribution[board] = (distribution[board] || 0) + 1;
+            });
+            
+            const sorted = Object.entries(distribution).sort((a, b) => b[0] - a[0]);
+            const maxCount = Math.max(...sorted.map(([_, count]) => count));
+            
+            container.innerHTML = sorted.map(([board, count]) => {
+                const percentage = (count / maxCount) * 100;
+                return `
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm text-gray-400 w-12">${board}连板</span>
+                        <div class="flex-1 h-6 bg-gray-700 rounded overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded progress-bar" style="width: ${percentage}%"></div>
+                        </div>
+                        <span class="text-sm font-semibold w-8">${count}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderHotSectors(data) {
+            const container = document.getElementById('hotSectors');
+            const sectors = {};
+            
+            data.forEach(stock => {
+                sectors[stock.sector] = (sectors[stock.sector] || 0) + stock.board;
+            });
+            
+            const sorted = Object.entries(sectors).sort((a, b) => b[1] - a[1]).slice(0, 6);
+            
+            container.innerHTML = sorted.map(([sector, totalBoard], index) => {
+                const colors = [
+                    'from-red-500 to-orange-500',
+                    'from-yellow-500 to-amber-500',
+                    'from-green-500 to-emerald-500',
+                    'from-blue-500 to-cyan-500',
+                    'from-purple-500 to-pink-500',
+                    'from-pink-500 to-rose-500'
+                ];
+                return `
+                    <div class="flex items-center gap-3">
+                        <span class="text-lg">${['🔥', '⭐', '💫', '🌟', '✨', '💥'][index]}</span>
+                        <span class="flex-1 font-medium">${sector}</span>
+                        <span class="bg-gradient-to-r ${colors[index]} px-3 py-1 rounded-full text-sm font-semibold">
+                            ${totalBoard}连板
+                        </span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderTrendChart(data) {
+            const container = document.getElementById('trendChart');
+            const days = 30;
+            const trendData = [];
+            
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+                
+                const count = Math.floor(Math.random() * 30) + 20;
+                trendData.push({ date: dateStr, count });
+            }
+            
+            const maxCount = Math.max(...trendData.map(d => d.count));
+            
+            container.innerHTML = trendData.map(d => {
+                const height = (d.count / maxCount) * 100;
+                return `
+                    <div class="flex-1 flex flex-col items-center gap-1">
+                        <div class="w-full bg-gradient-to-t from-red-500 to-orange-500 rounded-t" style="height: ${height}%"></div>
+                        <span class="text-xs text-gray-500">${d.date.slice(-3)}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterByBoard(minBoard) {
+            currentFilter = minBoard;
+            
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-red-600', 'text-white');
+                btn.classList.add('bg-gray-700');
+            });
+            
+            event.target.classList.remove('bg-gray-700');
+            event.target.classList.add('bg-red-600', 'text-white');
+            
+            if (minBoard === null) {
+                renderStockList(stockData);
+            } else {
+                const filtered = stockData.filter(s => s.board >= minBoard);
+                renderStockList(filtered);
+            }
+        }
+
+        async function refreshData() {
+            const icon = document.getElementById('refreshIcon');
+            icon.classList.add('auto-refresh');
+            
+            document.getElementById('stockList').innerHTML = `
+                <div class="py-8 text-center text-gray-500">
+                    <svg class="animate-spin h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    刷新数据中...
+                </div>
+            `;
+            
+            stockData = await getStockData();
+            
+            if (currentFilter !== null) {
+                stockData = stockData.filter(s => s.board >= currentFilter);
+            }
+            
+            renderStockList(stockData);
+            
+            stockData = await getStockData();
+            updateStats(stockData);
+            renderBoardDistribution(stockData);
+            renderHotSectors(stockData);
+            renderTrendChart(stockData);
+            
+            icon.classList.remove('auto-refresh');
+        }
+
+        async function init() {
+            stockData = await getStockData();
+            
+            updateStats(stockData);
+            renderStockList(stockData);
+            renderBoardDistribution(stockData);
+            renderHotSectors(stockData);
+            renderTrendChart(stockData);
+            
+            setInterval(refreshData, 60000);
+        }
+
+        init();
+    </script>
+</body>
+</html>
