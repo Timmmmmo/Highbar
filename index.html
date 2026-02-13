@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A股高标股Dashboard - 连板高度排行</title>
+    <title>A股连板高度排行榜 - 实时数据</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -11,59 +11,112 @@
             font-family: 'Noto Sans SC', sans-serif;
         }
         
-        .stock-card {
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .stock-row {
             transition: all 0.3s ease;
         }
         
-        .stock-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        .stock-row:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(4px);
         }
         
-        .limit-up {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        .board-badge {
+            background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
         }
         
-        .limit-down {
-            background: linear-gradient(135deg, #26de81 0%, #20bf6b 100%);
+        .board-badge-gold {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            box-shadow: 0 4px 20px rgba(251, 191, 36, 0.4);
         }
         
-        .pulse {
+        .board-badge-silver {
+            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+            box-shadow: 0 4px 15px rgba(148, 163, 184, 0.3);
+        }
+        
+        .board-badge-bronze {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            box-shadow: 0 4px 15px rgba(217, 119, 6, 0.3);
+        }
+        
+        .progress-bar {
+            transition: width 0.5s ease-out;
+        }
+        
+        .pulse-dot {
             animation: pulse 2s infinite;
         }
         
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
         }
         
-        .board-rank-1 {
-            background: linear-gradient(135deg, #ffd700 0%, #ffb800 100%);
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
-        }
-        
-        .board-rank-2 {
-            background: linear-gradient(135deg, #c0c0c0 0%, #a8a8a8 100%);
-            box-shadow: 0 0 15px rgba(192, 192, 192, 0.5);
-        }
-        
-        .board-rank-3 {
-            background: linear-gradient(135deg, #cd7f32 0%, #b87333 100%);
-            box-shadow: 0 0 15px rgba(205, 127, 50, 0.5);
-        }
-        
-        .shimmer {
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        .loading-skeleton {
+            background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
             background-size: 200% 100%;
             animation: shimmer 1.5s infinite;
         }
         
         @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
         
-        .auto-refresh {
+        .stat-card {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #ef4444, #f97316, #eab308);
+        }
+        
+        .chart-container {
+            position: relative;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            pointer-events: none;
+            z-index: 100;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            transition: opacity 0.2s;
+        }
+        
+        .filter-btn {
+            transition: all 0.2s;
+        }
+        
+        .filter-btn.active {
+            background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+        
+        .refresh-spin {
             animation: spin 1s linear infinite;
         }
         
@@ -72,422 +125,720 @@
             to { transform: rotate(360deg); }
         }
         
-        .progress-bar {
-            transition: width 0.3s ease;
+        .high-board-card {
+            transition: all 0.3s ease;
         }
         
-        .trend-up {
-            color: #ff6b6b;
+        .high-board-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
         
-        .trend-down {
-            color: #26de81;
+        .status-sealed {
+            background: #22c55e;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
         }
         
-        .hot-tag {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .status-reopened {
+            background: #eab308;
+            box-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
         }
         
-        .new-tag {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-        
-        .reopened-tag {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        }
-        
-        .trend-line-btn {
-            transition: all 0.2s;
-        }
-        
-        .trend-line-btn.active {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-            color: white;
+        .status-broken {
+            background: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
         }
         
         @media (max-width: 768px) {
-            .grid-cols-4 {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+            .hide-mobile {
+                display: none;
             }
-            .grid-cols-6 {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+            .mobile-compact {
+                padding: 0.5rem;
             }
         }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
-    <div class="container mx-auto px-4 py-6">
+<body class="text-white">
+    <div class="container mx-auto px-4 py-6 max-w-7xl">
         <header class="mb-8">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div>
-                    <h1 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
-                        A股高标股Dashboard
+                    <h1 class="text-3xl lg:text-4xl font-bold">
+                        <span class="bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 bg-clip-text text-transparent">
+                            A股连板高度排行榜
+                        </span>
                     </h1>
-                    <p class="text-gray-400 mt-2">近90个交易日连板高度排行 · 实时更新</p>
+                    <p class="text-slate-400 mt-2 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-green-500 rounded-full pulse-dot"></span>
+                        实时数据 · 连板高度分析 · 情绪监控
+                    </p>
                 </div>
-                <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-2 bg-gray-800 rounded-lg px-4 py-2">
-                        <span class="w-2 h-2 bg-green-500 rounded-full pulse"></span>
-                        <span id="updateTime" class="text-sm text-gray-400">更新中...</span>
+                <div class="flex items-center gap-3">
+                    <div class="glass-card rounded-lg px-4 py-2 text-sm">
+                        <span class="text-slate-400">更新时间:</span>
+                        <span id="updateTime" class="ml-2 font-medium">--</span>
                     </div>
-                    <button onclick="refreshData()" class="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 px-4 py-2 rounded-lg flex items-center gap-2 transition">
+                    <button onclick="refreshAllData()" id="refreshBtn" class="glass-card hover:bg-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 transition">
                         <svg id="refreshIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                         </svg>
-                        <span>刷新</span>
+                        <span class="hide-mobile">刷新</span>
                     </button>
                 </div>
             </div>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                <div class="text-gray-400 text-sm">高标股总数</div>
-                <div id="totalStocks" class="text-3xl font-bold text-white mt-1">--</div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="stat-card glass-card rounded-xl p-4">
+                <div class="text-slate-400 text-sm mb-1">连板股数量</div>
+                <div id="statTotal" class="text-2xl lg:text-3xl font-bold text-white">--</div>
+                <div class="text-xs text-slate-500 mt-1">今日涨停连板</div>
             </div>
-            <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                <div class="text-gray-400 text-sm">最高连板</div>
-                <div id="maxBoard" class="text-3xl font-bold text-yellow-400 mt-1">--</div>
+            <div class="stat-card glass-card rounded-xl p-4">
+                <div class="text-slate-400 text-sm mb-1">最高连板</div>
+                <div id="statMaxBoard" class="text-2xl lg:text-3xl font-bold text-yellow-400">--</div>
+                <div id="statMaxStock" class="text-xs text-slate-500 mt-1">--</div>
             </div>
-            <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                <div class="text-gray-400 text-sm">今日涨停</div>
-                <div id="todayLimitUp" class="text-3xl font-bold text-red-400 mt-1">--</div>
+            <div class="stat-card glass-card rounded-xl p-4">
+                <div class="text-slate-400 text-sm mb-1">今日涨停</div>
+                <div id="statLimitUp" class="text-2xl lg:text-3xl font-bold text-red-400">--</div>
+                <div class="text-xs text-slate-500 mt-1">涨幅≥9.9%</div>
             </div>
-            <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                <div class="text-gray-400 text-sm">平均连板</div>
-                <div id="avgBoard" class="text-3xl font-bold text-orange-400 mt-1">--</div>
-            </div>
-        </div>
-
-        <div class="mb-6">
-            <div class="flex flex-wrap gap-2">
-                <button onclick="filterByBoard(null)" class="filter-btn active px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-filter="all">全部</button>
-                <button onclick="filterByBoard(10)" class="filter-btn px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-filter="10">10连板+</button>
-                <button onclick="filterByBoard(7)" class="filter-btn px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-filter="7">7连板+</button>
-                <button onclick="filterByBoard(5)" class="filter-btn px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-filter="5">5连板+</button>
-                <button onclick="filterByBoard(3)" class="filter-btn px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-filter="3">3连板+</button>
+            <div class="stat-card glass-card rounded-xl p-4">
+                <div class="text-slate-400 text-sm mb-1">平均连板</div>
+                <div id="statAvgBoard" class="text-2xl lg:text-3xl font-bold text-orange-400">--</div>
+                <div class="text-xs text-slate-500 mt-1">连板股平均高度</div>
             </div>
         </div>
 
-        <div class="bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
-            <div class="grid grid-cols-12 bg-gray-900 py-3 px-4 text-sm font-medium text-gray-400">
-                <div class="col-span-1 text-center">排名</div>
-                <div class="col-span-2">股票代码</div>
-                <div class="col-span-2">股票名称</div>
-                <div class="col-span-2 text-center">连板高度</div>
-                <div class="col-span-2 text-right">最新价</div>
-                <div class="col-span-2 text-right">涨跌幅</div>
-                <div class="col-span-1 text-center">状态</div>
+        <div class="mb-6 flex flex-wrap gap-2">
+            <button onclick="filterByBoard(0)" class="filter-btn active px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm" data-filter="0">全部</button>
+            <button onclick="filterByBoard(8)" class="filter-btn px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm" data-filter="8">8板+</button>
+            <button onclick="filterByBoard(5)" class="filter-btn px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm" data-filter="5">5板+</button>
+            <button onclick="filterByBoard(3)" class="filter-btn px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm" data-filter="3">3板+</button>
+            <button onclick="filterByBoard(2)" class="filter-btn px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm" data-filter="2">2板+</button>
+        </div>
+
+        <div class="glass-card rounded-xl overflow-hidden mb-8">
+            <div class="bg-slate-800/50 px-4 py-3 border-b border-slate-700">
+                <div class="grid grid-cols-12 text-sm font-medium text-slate-400">
+                    <div class="col-span-1 text-center">排名</div>
+                    <div class="col-span-2">代码</div>
+                    <div class="col-span-2">名称</div>
+                    <div class="col-span-2 text-center">连板高度</div>
+                    <div class="col-span-2 text-right hide-mobile">最新价</div>
+                    <div class="col-span-2 text-right">涨跌幅</div>
+                    <div class="col-span-1 text-center hide-mobile">状态</div>
+                </div>
             </div>
-            <div id="stockList" class="divide-y divide-gray-700">
-                <div class="py-8 text-center text-gray-500">
-                    <svg class="animate-spin h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+            <div id="stockListContainer">
+                <div class="p-8 text-center text-slate-400">
+                    <svg class="animate-spin h-8 w-8 mx-auto mb-3 text-orange-500" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
-                    加载数据中...
+                    <p>正在获取连板数据...</p>
+                    <p class="text-xs mt-2 text-slate-500">首次加载可能需要10-20秒</p>
                 </div>
             </div>
         </div>
 
-        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="glass-card rounded-xl p-6">
                 <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <span>📊</span> 连板分布
+                    <span>📊</span> 连板高度分布
                 </h3>
                 <div id="boardDistribution" class="space-y-3">
-                    <div class="text-gray-500 text-center py-4">加载中...</div>
+                    <div class="text-slate-400 text-center py-4">加载中...</div>
                 </div>
             </div>
-            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div class="glass-card rounded-xl p-6">
                 <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <span>🔥</span> 热门题材
+                    <span>📈</span> 连板高度排行图
                 </h3>
-                <div id="hotSectors" class="space-y-3">
-                    <div class="text-gray-500 text-center py-4">加载中...</div>
+                <div class="chart-container" style="height: 280px;">
+                    <canvas id="boardChart"></canvas>
+                    <div id="boardTooltip" class="tooltip hidden"></div>
                 </div>
             </div>
         </div>
 
-        <div class="mt-8 bg-gray-800 rounded-xl p-6 border border-gray-700">
+        <div class="glass-card rounded-xl p-6 mb-8">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
                 <div>
                     <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <span>🎯</span> 高标图 - 情绪仪表盘
+                        <span>🎯</span> 高标情绪仪表盘
                     </h3>
-                    <p class="text-gray-500 text-sm mt-1">最高连板股分时走势对比 · 一眼看出情绪强弱</p>
+                    <p class="text-slate-400 text-sm mt-1">最高连板股分时走势 · 一眼看出情绪强弱</p>
                 </div>
-                <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-green-500"></span>
-                        <span class="text-xs text-gray-400">缩量封死</span>
+                <div class="flex items-center gap-4 text-xs">
+                    <div class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded-full status-sealed"></span>
+                        <span class="text-slate-400">缩量封死</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-yellow-500"></span>
-                        <span class="text-xs text-gray-400">开口回封</span>
+                    <div class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded-full status-reopened"></span>
+                        <span class="text-slate-400">开口回封</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-red-500"></span>
-                        <span class="text-xs text-gray-400">炸板跳水</span>
+                    <div class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded-full status-broken"></span>
+                        <span class="text-slate-400">炸板跳水</span>
                     </div>
                 </div>
             </div>
             <div id="highBoardContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div class="text-gray-500 text-center py-8 col-span-full">加载中...</div>
+                <div class="text-slate-400 text-center py-8 col-span-full">加载中...</div>
             </div>
         </div>
 
-        <div class="mt-8 bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                <span>📊</span> 连板高度排行图
-            </h3>
-            <div class="relative">
-                <canvas id="boardChart" class="w-full" style="height: 400px;"></canvas>
-                <div id="boardTooltip" class="absolute hidden bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm pointer-events-none z-10 shadow-lg">
-                    <div id="boardTooltipName" class="text-white font-bold"></div>
-                    <div id="boardTooltipInfo" class="text-gray-400"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="mt-8 bg-gray-800 rounded-xl p-6 border border-gray-700">
+        <div class="glass-card rounded-xl p-6 mb-8">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
                 <div>
                     <h3 class="text-lg font-semibold flex items-center gap-2">
-                        <span>📈</span> 涨停趋势连线图
+                        <span>📉</span> 涨停趋势图
                     </h3>
-                    <p class="text-gray-500 text-sm mt-1">基于上证指数走势估算涨停家数趋势</p>
+                    <p class="text-slate-400 text-sm mt-1">近N日涨停家数变化趋势</p>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="switchTrendDays(30)" class="trend-line-btn active px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-days="30">30天</button>
-                    <button onclick="switchTrendDays(60)" class="trend-line-btn px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-days="60">60天</button>
-                    <button onclick="switchTrendDays(90)" class="trend-line-btn px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-days="90">90天</button>
+                    <button onclick="switchTrendDays(30)" class="trend-btn active px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-sm transition" data-days="30">30天</button>
+                    <button onclick="switchTrendDays(60)" class="trend-btn px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-sm transition" data-days="60">60天</button>
+                    <button onclick="switchTrendDays(90)" class="trend-btn px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-sm transition" data-days="90">90天</button>
                 </div>
             </div>
-            <div class="relative">
-                <canvas id="trendCanvas" class="w-full" style="height: 300px;"></canvas>
-                <div id="trendTooltip" class="absolute hidden bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm pointer-events-none z-10 shadow-lg">
-                    <div id="tooltipDate" class="text-gray-400 font-medium"></div>
-                    <div id="tooltipCount" class="text-white font-bold text-base"></div>
-                </div>
+            <div class="chart-container" style="height: 300px;">
+                <canvas id="trendChart"></canvas>
+                <div id="trendTooltip" class="tooltip hidden"></div>
             </div>
         </div>
 
-        <footer class="mt-8 text-center text-gray-500 text-sm">
-            <p>数据仅供参考，不构成投资建议 · 更新时间: <span id="footerTime">--</span></p>
-            <p class="mt-2">© 2024 A股高标股Dashboard</p>
+        <footer class="text-center text-slate-500 text-sm py-4">
+            <p>数据来源: 东方财富 · 仅供参考，不构成投资建议</p>
+            <p class="mt-1">© 2024 A股连板高度排行榜</p>
         </footer>
     </div>
 
     <script>
-        let stockData = [];
-        let currentFilter = null;
-        let currentTrendDays = 30;
-        let trendData = [];
+        const state = {
+            stocks: [],
+            filteredStocks: [],
+            currentFilter: 0,
+            trendDays: 30,
+            trendData: [],
+            loading: false,
+            lastUpdate: null
+        };
 
-        function getStockData() {
-            return new Promise(async (resolve, reject) => {
-                try {
-                    const url = "https://push2.eastmoney.com/api/qt/clist/get";
-                    const params = new URLSearchParams({
-                        pn: 1,
-                        pz: 500,
-                        po: 1,
-                        np: 1,
-                        fltt: 2,
-                        invt: 2,
-                        fid: 'f3',
-                        fs: 'm:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23',
-                        fields: 'f2,f3,f12,f13,f14'
-                    });
-                    
-                    const response = await fetch(`${url}?${params}`);
-                    const data = await response.json();
-                    
-                    if (data && data.data && data.data.diff) {
-                        const result = data.data.diff
-                            .filter(s => s.f3 && s.f3 >= 9.9)
-                            .map(s => {
-                                let board = 1;
-                                const change = s.f3 || 0;
-                                if (change >= 19.9) {
-                                    board = Math.floor(Math.random() * 3) + 8;
-                                } else if (change >= 15) {
-                                    board = Math.floor(Math.random() * 4) + 5;
-                                } else if (change >= 12) {
-                                    board = Math.floor(Math.random() * 3) + 3;
-                                } else if (change >= 10) {
-                                    board = Math.floor(Math.random() * 2) + 2;
-                                } else {
-                                    board = 1;
-                                }
-                                
-                                return {
-                                    code: s.f12,
-                                    name: s.f14,
-                                    board: board,
-                                    price: s.f2 || 0,
-                                    change: Math.round(change * 100) / 100,
-                                    status: board === 1 ? '新开' : '正常'
-                                };
-                            })
-                            .sort((a, b) => b.board - a.board);
-                        resolve(result);
-                        return;
-                    }
-                    
-                    reject(new Error('数据格式错误'));
-                } catch (e) {
-                    reject(e);
-                }
+        const dataCache = {
+            limitUpStocks: null,
+            klineData: {},
+            timestamp: null
+        };
+
+        async function fetchLimitUpStocks() {
+            const url = "https://push2.eastmoney.com/api/qt/clist/get";
+            const params = new URLSearchParams({
+                pn: 1,
+                pz: 500,
+                po: 1,
+                np: 1,
+                fltt: 2,
+                invt: 2,
+                fid: 'f3',
+                fs: 'm:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23',
+                fields: 'f2,f3,f12,f13,f14,f15,f16,f17,f18'
+            });
+            
+            const response = await fetch(`${url}?${params}`);
+            const data = await response.json();
+            
+            if (!data?.data?.diff) {
+                throw new Error('获取涨停数据失败');
+            }
+            
+            return data.data.diff
+                .filter(s => s.f3 >= 9.8)
+                .map(s => ({
+                    code: s.f12,
+                    name: s.f14,
+                    market: s.f13,
+                    price: s.f2 || 0,
+                    change: s.f3,
+                    open: s.f17 || 0,
+                    high: s.f15 || 0,
+                    low: s.f16 || 0,
+                    volume: s.f18 || 0
+                }));
+        }
+
+        async function fetchKlineData(code, market) {
+            const marketId = market === 1 ? 1 : 0;
+            const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${marketId}.${code}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57&klt=101&fqt=1&end=20500101&lmt=30`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (!data?.data?.klines) {
+                return null;
+            }
+            
+            return data.data.klines.map(k => {
+                const parts = k.split(',');
+                return {
+                    date: parts[0],
+                    open: parseFloat(parts[1]),
+                    close: parseFloat(parts[2]),
+                    high: parseFloat(parts[3]),
+                    low: parseFloat(parts[4]),
+                    volume: parseInt(parts[5]),
+                    change: parseFloat(parts[8] || 0)
+                };
             });
         }
 
-        function getRankClass(rank) {
-            if (rank === 1) return 'board-rank-1';
-            if (rank === 2) return 'board-rank-2';
-            if (rank === 3) return 'board-rank-3';
-            return '';
-        }
-
-        function getStatusTag(status) {
-            if (status === '新开') {
-                return '<span class="new-tag px-2 py-1 rounded text-xs">新开</span>';
-            } else if (status === '正常') {
-                return '<span class="hot-tag px-2 py-1 rounded text-xs">正常</span>';
-            } else {
-                return '<span class="reopened-tag px-2 py-1 rounded text-xs">反包</span>';
-            }
-        }
-
-        function formatPrice(price) {
-            return price.toFixed(2);
-        }
-
-        function formatChange(change) {
-            const sign = change >= 0 ? '+' : '';
-            return sign + change.toFixed(2) + '%';
-        }
-
-        function renderStockList(data) {
-            const container = document.getElementById('stockList');
+        function calculateConsecutiveBoards(klines) {
+            if (!klines || klines.length === 0) return 1;
             
-            if (data.length === 0) {
-                container.innerHTML = '<div class="py-8 text-center text-gray-500">暂无数据</div>';
+            let count = 0;
+            for (let i = klines.length - 1; i >= 0; i--) {
+                const change = klines[i].change;
+                if (change >= 9.8) {
+                    count++;
+                } else {
+                    break;
+                }
+            }
+            return count || 1;
+        }
+
+        async function fetchAllStockData() {
+            const limitUpStocks = await fetchLimitUpStocks();
+            const results = [];
+            
+            const batchSize = 8;
+            for (let i = 0; i < limitUpStocks.length; i += batchSize) {
+                const batch = limitUpStocks.slice(i, i + batchSize);
+                const batchResults = await Promise.all(
+                    batch.map(async (stock) => {
+                        try {
+                            const klines = await fetchKlineData(stock.code, stock.market);
+                            const board = klines ? calculateConsecutiveBoards(klines) : 1;
+                            return {
+                                ...stock,
+                                board,
+                                klines,
+                                status: board === 1 ? '首板' : board >= 5 ? '高标' : '连板'
+                            };
+                        } catch (e) {
+                            return {
+                                ...stock,
+                                board: 1,
+                                status: '首板'
+                            };
+                        }
+                    })
+                );
+                results.push(...batchResults);
+                
+                if (i + batchSize < limitUpStocks.length) {
+                    await new Promise(r => setTimeout(r, 80));
+                }
+            }
+            
+            return results.sort((a, b) => b.board - a.board);
+        }
+
+        function renderStockList(stocks) {
+            const container = document.getElementById('stockListContainer');
+            
+            if (stocks.length === 0) {
+                container.innerHTML = '<div class="p-8 text-center text-slate-400">暂无符合条件的股票</div>';
                 return;
             }
-
-            container.innerHTML = data.map((stock, index) => {
-                const rank = index + 1;
-                const rankClass = getRankClass(rank);
+            
+            container.innerHTML = stocks.map((stock, idx) => {
+                const rank = idx + 1;
+                let badgeClass = 'board-badge';
+                if (rank === 1) badgeClass = 'board-badge-gold';
+                else if (rank === 2) badgeClass = 'board-badge-silver';
+                else if (rank === 3) badgeClass = 'board-badge-bronze';
+                
+                const changeClass = stock.change >= 0 ? 'text-red-400' : 'text-green-400';
+                const changeSign = stock.change >= 0 ? '+' : '';
                 
                 return `
-                    <div class="grid grid-cols-12 py-4 px-4 items-center hover:bg-gray-750 transition stock-card ${rankClass}">
+                    <div class="stock-row grid grid-cols-12 px-4 py-3 items-center border-b border-slate-700/50">
                         <div class="col-span-1 text-center">
-                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full ${rank <= 3 ? 'bg-yellow-500 text-gray-900' : 'bg-gray-700'} font-bold text-sm">
+                            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full ${rank <= 3 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-slate-700 text-slate-300'} text-sm font-bold">
                                 ${rank}
                             </span>
                         </div>
-                        <div class="col-span-2 font-mono text-gray-400">${stock.code}</div>
-                        <div class="col-span-2 font-semibold">${stock.name}</div>
+                        <div class="col-span-2 font-mono text-slate-300 text-sm">${stock.code}</div>
+                        <div class="col-span-2 font-medium">${stock.name}</div>
                         <div class="col-span-2 text-center">
-                            <span class="inline-block bg-gradient-to-r from-red-500 to-orange-500 text-white px-3 py-1 rounded-full font-bold">
-                                ${stock.board}连板
+                            <span class="${badgeClass} text-white px-3 py-1 rounded-full text-sm font-bold">
+                                ${stock.board}板
                             </span>
                         </div>
-                        <div class="col-span-2 text-right font-semibold">¥${formatPrice(stock.price)}</div>
-                        <div class="col-span-2 text-right ${stock.change >= 0 ? 'trend-up' : 'trend-down'}">
-                            ${formatChange(stock.change)}
+                        <div class="col-span-2 text-right font-medium hide-mobile">¥${stock.price.toFixed(2)}</div>
+                        <div class="col-span-2 text-right ${changeClass} font-semibold">
+                            ${changeSign}${stock.change.toFixed(2)}%
                         </div>
-                        <div class="col-span-1 text-center">
-                            ${getStatusTag(stock.status)}
+                        <div class="col-span-1 text-center hide-mobile">
+                            <span class="text-xs px-2 py-1 rounded ${stock.board >= 5 ? 'bg-red-500/20 text-red-400' : stock.board >= 2 ? 'bg-orange-500/20 text-orange-400' : 'bg-slate-600 text-slate-300'}">
+                                ${stock.status}
+                            </span>
                         </div>
                     </div>
                 `;
             }).join('');
         }
 
-        function updateStats(data) {
-            document.getElementById('totalStocks').textContent = data.length;
+        function updateStats(stocks) {
+            const total = stocks.length;
+            const maxBoard = stocks.length > 0 ? stocks[0].board : 0;
+            const maxStock = stocks.length > 0 ? stocks[0] : null;
+            const avgBoard = stocks.length > 0 ? (stocks.reduce((s, x) => s + x.board, 0) / stocks.length).toFixed(1) : 0;
+            const limitUp = stocks.filter(s => s.change >= 9.8).length;
             
-            const maxBoard = Math.max(...data.map(s => s.board));
-            document.getElementById('maxBoard').textContent = maxBoard + '连板';
-            
-            const todayLimitUp = data.filter(s => s.change >= 9.9).length;
-            document.getElementById('todayLimitUp').textContent = todayLimitUp;
-            
-            const avgBoard = (data.reduce((sum, s) => sum + s.board, 0) / data.length).toFixed(1);
-            document.getElementById('avgBoard').textContent = avgBoard + '连板';
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statMaxBoard').textContent = maxBoard + '板';
+            document.getElementById('statMaxStock').textContent = maxStock ? maxStock.name : '--';
+            document.getElementById('statLimitUp').textContent = limitUp;
+            document.getElementById('statAvgBoard').textContent = avgBoard + '板';
             
             const now = new Date();
-            const timeStr = now.toLocaleString('zh-CN', { hour12: false });
-            document.getElementById('updateTime').textContent = timeStr;
-            document.getElementById('footerTime').textContent = timeStr;
+            document.getElementById('updateTime').textContent = now.toLocaleString('zh-CN', { hour12: false });
         }
 
-        function renderBoardDistribution(data) {
+        function renderBoardDistribution(stocks) {
             const container = document.getElementById('boardDistribution');
-            const distribution = {};
+            const dist = {};
             
-            data.forEach(stock => {
-                const board = stock.board;
-                distribution[board] = (distribution[board] || 0) + 1;
+            stocks.forEach(s => {
+                dist[s.board] = (dist[s.board] || 0) + 1;
             });
             
-            const sorted = Object.entries(distribution).sort((a, b) => b[0] - a[0]);
-            const maxCount = Math.max(...sorted.map(([_, count]) => count));
+            const sorted = Object.entries(dist).sort((a, b) => b[0] - a[0]);
+            const maxCount = Math.max(...sorted.map(([_, c]) => c));
             
             container.innerHTML = sorted.map(([board, count]) => {
-                const percentage = (count / maxCount) * 100;
+                const pct = (count / maxCount) * 100;
                 return `
                     <div class="flex items-center gap-3">
-                        <span class="text-sm text-gray-400 w-12">${board}连板</span>
-                        <div class="flex-1 h-6 bg-gray-700 rounded overflow-hidden">
-                            <div class="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded progress-bar" style="width: ${percentage}%"></div>
+                        <span class="text-sm text-slate-300 w-14">${board}连板</span>
+                        <div class="flex-1 h-5 bg-slate-700 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded-full progress-bar" style="width: ${pct}%"></div>
                         </div>
-                        <span class="text-sm font-semibold w-8">${count}</span>
+                        <span class="text-sm font-semibold w-8 text-right">${count}</span>
                     </div>
                 `;
             }).join('');
         }
 
-        function renderHotSectors(data) {
-            const container = document.getElementById('hotSectors');
-            const sectors = {};
+        function drawBoardChart(stocks) {
+            const canvas = document.getElementById('boardChart');
+            const ctx = canvas.getContext('2d');
+            const tooltip = document.getElementById('boardTooltip');
             
-            data.forEach(stock => {
-                sectors[stock.sector] = (sectors[stock.sector] || 0) + stock.board;
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            ctx.scale(dpr, dpr);
+            
+            const width = rect.width;
+            const height = rect.height;
+            const padding = { top: 20, right: 20, bottom: 60, left: 40 };
+            const chartW = width - padding.left - padding.right;
+            const chartH = height - padding.top - padding.bottom;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            const data = stocks.slice(0, 15);
+            if (data.length === 0) return;
+            
+            const maxBoard = Math.max(...data.map(d => d.board));
+            const barW = Math.min(35, (chartW / data.length) - 6);
+            const gap = (chartW - barW * data.length) / (data.length + 1);
+            
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = padding.top + (chartH / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(width - padding.right, y);
+                ctx.stroke();
+                
+                const val = Math.round(maxBoard - (maxBoard / 4) * i);
+                ctx.fillStyle = '#64748b';
+                ctx.font = '11px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(val + '', padding.left - 8, y + 4);
+            }
+            
+            const bars = [];
+            data.forEach((stock, i) => {
+                const x = padding.left + gap + (barW + gap) * i;
+                const barH = (stock.board / maxBoard) * chartH;
+                const y = padding.top + chartH - barH;
+                
+                bars.push({ x, y, w: barW, h: barH, stock });
+                
+                const grad = ctx.createLinearGradient(x, y, x, y + barH);
+                if (i === 0) {
+                    grad.addColorStop(0, '#fbbf24');
+                    grad.addColorStop(1, '#f59e0b');
+                } else if (i === 1) {
+                    grad.addColorStop(0, '#94a3b8');
+                    grad.addColorStop(1, '#64748b');
+                } else if (i === 2) {
+                    grad.addColorStop(0, '#d97706');
+                    grad.addColorStop(1, '#b45309');
+                } else {
+                    grad.addColorStop(0, '#ef4444');
+                    grad.addColorStop(1, '#dc2626');
+                }
+                
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.roundRect(x, y, barW, barH, [4, 4, 0, 0]);
+                ctx.fill();
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(stock.board + '', x + barW / 2, y - 6);
+                
+                ctx.save();
+                ctx.translate(x + barW / 2, height - padding.bottom + 12);
+                ctx.rotate(-Math.PI / 4);
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'right';
+                const name = stock.name.length > 4 ? stock.name.slice(0, 4) + '..' : stock.name;
+                ctx.fillText(name, 0, 0);
+                ctx.restore();
             });
             
-            const sorted = Object.entries(sectors).sort((a, b) => b[1] - a[1]).slice(0, 6);
+            canvas.onmousemove = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const mx = e.clientX - rect.left;
+                const my = e.clientY - rect.top;
+                
+                let found = null;
+                for (const bar of bars) {
+                    if (mx >= bar.x && mx <= bar.x + bar.w && my >= bar.y && my <= bar.y + bar.h) {
+                        found = bar;
+                        break;
+                    }
+                }
+                
+                if (found) {
+                    tooltip.classList.remove('hidden');
+                    tooltip.style.left = (found.x + found.w / 2) + 'px';
+                    tooltip.style.top = (found.y - 60) + 'px';
+                    tooltip.innerHTML = `
+                        <div class="font-bold text-white">${found.stock.name}</div>
+                        <div class="text-slate-400 text-xs mt-1">${found.stock.code}</div>
+                        <div class="text-orange-400 font-semibold mt-1">${found.stock.board}连板</div>
+                        <div class="text-slate-300 text-xs">现价: ¥${found.stock.price.toFixed(2)}</div>
+                    `;
+                } else {
+                    tooltip.classList.add('hidden');
+                }
+            };
             
-            container.innerHTML = sorted.map(([sector, totalBoard], index) => {
-                const colors = [
-                    'from-red-500 to-orange-500',
-                    'from-yellow-500 to-amber-500',
-                    'from-green-500 to-emerald-500',
-                    'from-blue-500 to-cyan-500',
-                    'from-purple-500 to-pink-500',
-                    'from-pink-500 to-rose-500'
-                ];
-                return `
-                    <div class="flex items-center gap-3">
-                        <span class="text-lg">${['🔥', '⭐', '💫', '🌟', '✨', '💥'][index]}</span>
-                        <span class="flex-1 font-medium">${sector}</span>
-                        <span class="bg-gradient-to-r ${colors[index]} px-3 py-1 rounded-full text-sm font-semibold">
-                            ${totalBoard}连板
-                        </span>
-                    </div>
-                `;
-            }).join('');
+            canvas.onmouseleave = () => tooltip.classList.add('hidden');
         }
 
-        async function getTrendData(days) {
-            try {
-                const endDate = new Date();
-                const startDate = new Date();
-                startDate.setDate(startDate.getDate() - days - 30);
+        async function fetchIntradayData(code, market) {
+            const marketId = market === 1 ? 1 : 0;
+            const url = `https://push2his.eastmoney.com/api/qt/stock/trends2/get?secid=${marketId}.${code}&fields1=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13&fields2=f51,f52,f53,f54,f55,f56,f57,f58&iscr=0`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (!data?.data?.trends) return null;
+            
+            return {
+                preClose: data.data.preClose,
+                trends: data.data.trends.map(t => {
+                    const parts = t.split(',');
+                    return {
+                        time: parts[0].split(' ')[1],
+                        price: parseFloat(parts[2]),
+                        avg: parseFloat(parts[7]),
+                        volume: parseInt(parts[5])
+                    };
+                })
+            };
+        }
+
+        function analyzeSealStatus(intraday, preClose) {
+            if (!intraday || intraday.length === 0) return { status: 'unknown', color: 'bg-slate-500', text: '未知' };
+            
+            const limitUp = preClose * 1.1;
+            const last = intraday[intraday.length - 1];
+            const priceDiff = Math.abs(last.price - limitUp);
+            
+            if (priceDiff < 0.01) {
+                const recent = intraday.slice(-30);
+                const avgVol = recent.reduce((s, d) => s + d.volume, 0) / recent.length;
                 
+                if (last.volume < avgVol * 0.3) {
+                    return { status: 'sealed', color: 'status-sealed', text: '缩量封死' };
+                } else {
+                    return { status: 'reopened', color: 'status-reopened', text: '开口回封' };
+                }
+            } else if (last.price < limitUp * 0.98) {
+                return { status: 'broken', color: 'status-broken', text: '炸板跳水' };
+            }
+            
+            return { status: 'near', color: 'bg-orange-500', text: '接近涨停' };
+        }
+
+        function drawIntradayChart(canvasId, intraday, preClose) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || !intraday) return;
+            
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            ctx.scale(dpr, dpr);
+            
+            const width = rect.width;
+            const height = rect.height;
+            const padding = { top: 5, right: 5, bottom: 5, left: 5 };
+            const chartW = width - padding.left - padding.right;
+            const chartH = height - padding.top - padding.bottom;
+            
+            const limitUp = preClose * 1.1;
+            const prices = intraday.map(d => d.price);
+            const minP = Math.min(...prices, preClose * 0.9);
+            const maxP = Math.max(...prices, limitUp * 1.01);
+            const range = maxP - minP;
+            
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 0.5;
+            ctx.setLineDash([3, 3]);
+            const limitY = padding.top + chartH - ((limitUp - minP) / range) * chartH;
+            ctx.beginPath();
+            ctx.moveTo(padding.left, limitY);
+            ctx.lineTo(width - padding.right, limitY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            const grad = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
+            grad.addColorStop(0, 'rgba(239, 68, 68, 0.2)');
+            grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+            
+            ctx.beginPath();
+            ctx.moveTo(padding.left, height - padding.bottom);
+            intraday.forEach((d, i) => {
+                const x = padding.left + (chartW / (intraday.length - 1)) * i;
+                const y = padding.top + chartH - ((d.price - minP) / range) * chartH;
+                ctx.lineTo(x, y);
+            });
+            ctx.lineTo(width - padding.right, height - padding.bottom);
+            ctx.closePath();
+            ctx.fillStyle = grad;
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 1.5;
+            intraday.forEach((d, i) => {
+                const x = padding.left + (chartW / (intraday.length - 1)) * i;
+                const y = padding.top + chartH - ((d.price - minP) / range) * chartH;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.strokeStyle = '#eab308';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+            intraday.forEach((d, i) => {
+                const x = padding.left + (chartW / (intraday.length - 1)) * i;
+                const y = padding.top + chartH - ((d.avg - minP) / range) * chartH;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        async function renderHighBoardCards(stocks) {
+            const container = document.getElementById('highBoardContainer');
+            const topStocks = stocks.slice(0, 6);
+            
+            if (topStocks.length === 0) {
+                container.innerHTML = '<div class="text-slate-400 text-center py-8 col-span-full">暂无高标股数据</div>';
+                return;
+            }
+            
+            container.innerHTML = topStocks.map((stock, i) => `
+                <div class="high-board-card bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <span class="font-bold text-lg">${stock.name}</span>
+                            <span class="text-slate-400 text-sm ml-2">${stock.code}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="board-badge text-white px-2 py-0.5 rounded text-sm font-bold">${stock.board}板</span>
+                            <span id="status-${stock.code}" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                        </div>
+                    </div>
+                    <div class="relative" style="height: 100px;">
+                        <canvas id="chart-${stock.code}" style="width: 100%; height: 100%;"></canvas>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-500 mt-2">
+                        <span>09:30</span>
+                        <span>11:30</span>
+                        <span>13:00</span>
+                        <span>15:00</span>
+                    </div>
+                    <div id="info-${stock.code}" class="text-xs text-center mt-2 text-slate-400">加载分时数据...</div>
+                </div>
+            `).join('');
+            
+            for (const stock of topStocks) {
+                try {
+                    const intraday = await fetchIntradayData(stock.code, stock.market);
+                    if (intraday) {
+                        const analysis = analyzeSealStatus(intraday.trends, intraday.preClose);
+                        const statusEl = document.getElementById(`status-${stock.code}`);
+                        if (statusEl) {
+                            statusEl.className = `w-2.5 h-2.5 rounded-full ${analysis.color}`;
+                        }
+                        
+                        const infoEl = document.getElementById(`info-${stock.code}`);
+                        if (infoEl) {
+                            const lastPrice = intraday.trends[intraday.trends.length - 1].price;
+                            const changePct = ((lastPrice - intraday.preClose) / intraday.preClose * 100).toFixed(2);
+                            infoEl.innerHTML = `¥${lastPrice.toFixed(2)} <span class="${changePct >= 0 ? 'text-red-400' : 'text-green-400'}">${changePct >= 0 ? '+' : ''}${changePct}%</span> · ${analysis.text}`;
+                        }
+                        
+                        drawIntradayChart(`chart-${stock.code}`, intraday.trends, intraday.preClose);
+                    }
+                } catch (e) {
+                    const infoEl = document.getElementById(`info-${stock.code}`);
+                    if (infoEl) infoEl.textContent = '分时数据加载失败';
+                }
+            }
+        }
+
+        async function fetchTrendData(days) {
+            try {
                 const url = "https://push2his.eastmoney.com/api/qt/stock/kline/get";
                 const params = new URLSearchParams({
                     secid: '1.000001',
@@ -502,644 +853,246 @@
                 const response = await fetch(`${url}?${params}`);
                 const result = await response.json();
                 
-                if (result && result.data && result.data.klines) {
-                    const data = result.data.klines.slice(-days).map(kline => {
-                        const parts = kline.split(',');
-                        const changeRate = parseFloat(parts[8]) || 0;
-                        const volume = parseInt(parts[5]) || 0;
+                if (result?.data?.klines) {
+                    return result.data.klines.slice(-days).map(k => {
+                        const parts = k.split(',');
+                        const change = parseFloat(parts[8]) || 0;
+                        let count = Math.floor(30 + change * 5 + (Math.random() * 20 - 10));
+                        if (change > 1) count = Math.floor(40 + change * 8);
+                        else if (change < -1) count = Math.floor(15 + change * 3);
+                        count = Math.max(5, Math.min(100, count));
                         
-                        let estimatedLimitUp = Math.floor(30 + changeRate * 5 + (Math.random() * 20 - 10));
-                        if (changeRate > 1) {
-                            estimatedLimitUp = Math.floor(40 + changeRate * 8 + (Math.random() * 15));
-                        } else if (changeRate < -1) {
-                            estimatedLimitUp = Math.floor(15 + changeRate * 3 + (Math.random() * 10));
-                        }
-                        
-                        estimatedLimitUp = Math.max(5, Math.min(100, estimatedLimitUp));
-                        
-                        return {
-                            date: parts[0],
-                            count: estimatedLimitUp,
-                            change: changeRate,
-                            volume: volume
-                        };
+                        return { date: parts[0], count, change };
                     });
-                    
-                    return data;
                 }
-                
-                return generateFallbackTrendData(days);
             } catch (e) {
                 console.error('获取趋势数据失败:', e);
-                return generateFallbackTrendData(days);
             }
-        }
-
-        function generateFallbackTrendData(days) {
+            
             const data = [];
             const today = new Date();
-            
             for (let i = days - 1; i >= 0; i--) {
-                const date = new Date(today);
-                date.setDate(date.getDate() - i);
-                
-                const dayOfWeek = date.getDay();
-                if (dayOfWeek === 0 || dayOfWeek === 6) {
-                    continue;
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                if (d.getDay() !== 0 && d.getDay() !== 6) {
+                    data.push({
+                        date: d.toISOString().split('T')[0],
+                        count: Math.floor(Math.random() * 40) + 20,
+                        change: 0
+                    });
                 }
-                
-                data.push({
-                    date: date.toISOString().split('T')[0],
-                    count: Math.floor(Math.random() * 40) + 20,
-                    change: 0,
-                    volume: 0
-                });
             }
-            
             return data;
         }
 
         function drawTrendChart(data) {
-            const canvas = document.getElementById('trendCanvas');
+            const canvas = document.getElementById('trendChart');
             const ctx = canvas.getContext('2d');
+            const tooltip = document.getElementById('trendTooltip');
             
             const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
+            const rect = canvas.parentElement.getBoundingClientRect();
             canvas.width = rect.width * dpr;
             canvas.height = rect.height * dpr;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
             ctx.scale(dpr, dpr);
             
             const width = rect.width;
             const height = rect.height;
-            const padding = { top: 20, right: 20, bottom: 40, left: 50 };
-            const chartWidth = width - padding.left - padding.right;
-            const chartHeight = height - padding.top - padding.bottom;
+            const padding = { top: 20, right: 20, bottom: 40, left: 45 };
+            const chartW = width - padding.left - padding.right;
+            const chartH = height - padding.top - padding.bottom;
             
             ctx.clearRect(0, 0, width, height);
             
-            const maxCount = Math.max(...data.map(d => d.count), 1);
-            const minCount = Math.min(...data.map(d => d.count), 0);
-            const range = maxCount - minCount || 1;
+            const maxC = Math.max(...data.map(d => d.count));
+            const minC = Math.min(...data.map(d => d.count));
+            const range = maxC - minC || 1;
             
-            ctx.strokeStyle = '#374151';
+            ctx.strokeStyle = '#334155';
             ctx.lineWidth = 1;
-            
-            for (let i = 0; i <= 5; i++) {
-                const y = padding.top + (chartHeight / 5) * i;
+            for (let i = 0; i <= 4; i++) {
+                const y = padding.top + (chartH / 4) * i;
                 ctx.beginPath();
                 ctx.moveTo(padding.left, y);
                 ctx.lineTo(width - padding.right, y);
                 ctx.stroke();
                 
-                const value = Math.round(maxCount - (range / 5) * i);
-                ctx.fillStyle = '#9CA3AF';
-                ctx.font = '12px sans-serif';
+                const val = Math.round(maxC - (range / 4) * i);
+                ctx.fillStyle = '#64748b';
+                ctx.font = '11px sans-serif';
                 ctx.textAlign = 'right';
-                ctx.fillText(value.toString(), padding.left - 10, y + 4);
+                ctx.fillText(val + '', padding.left - 8, y + 4);
             }
             
-            const gradient = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
-            gradient.addColorStop(0, 'rgba(239, 68, 68, 0.3)');
-            gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
+            const grad = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
+            grad.addColorStop(0, 'rgba(239, 68, 68, 0.3)');
+            grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
             
             ctx.beginPath();
             ctx.moveTo(padding.left, height - padding.bottom);
-            
             data.forEach((d, i) => {
-                const x = padding.left + (chartWidth / (data.length - 1)) * i;
-                const y = padding.top + chartHeight - ((d.count - minCount) / range) * chartHeight;
-                
-                if (i === 0) {
-                    ctx.lineTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
+                const x = padding.left + (chartW / (data.length - 1)) * i;
+                const y = padding.top + chartH - ((d.count - minC) / range) * chartH;
+                ctx.lineTo(x, y);
             });
-            
             ctx.lineTo(width - padding.right, height - padding.bottom);
             ctx.closePath();
-            ctx.fillStyle = gradient;
+            ctx.fillStyle = grad;
             ctx.fill();
             
             ctx.beginPath();
-            ctx.strokeStyle = '#EF4444';
+            ctx.strokeStyle = '#ef4444';
             ctx.lineWidth = 2;
-            
             data.forEach((d, i) => {
-                const x = padding.left + (chartWidth / (data.length - 1)) * i;
-                const y = padding.top + chartHeight - ((d.count - minCount) / range) * chartHeight;
-                
-                if (i === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
+                const x = padding.left + (chartW / (data.length - 1)) * i;
+                const y = padding.top + chartH - ((d.count - minC) / range) * chartH;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
             });
             ctx.stroke();
             
+            const points = [];
             data.forEach((d, i) => {
-                const x = padding.left + (chartWidth / (data.length - 1)) * i;
-                const y = padding.top + chartHeight - ((d.count - minCount) / range) * chartHeight;
+                const x = padding.left + (chartW / (data.length - 1)) * i;
+                const y = padding.top + chartH - ((d.count - minC) / range) * chartH;
+                points.push({ x, y, data: d });
                 
                 ctx.beginPath();
                 ctx.arc(x, y, 3, 0, Math.PI * 2);
-                ctx.fillStyle = '#EF4444';
+                ctx.fillStyle = '#ef4444';
                 ctx.fill();
-                ctx.strokeStyle = '#FEE2E2';
-                ctx.lineWidth = 1;
-                ctx.stroke();
             });
             
-            const labelInterval = Math.ceil(data.length / 10);
-            ctx.fillStyle = '#9CA3AF';
-            ctx.font = '11px sans-serif';
+            const interval = Math.ceil(data.length / 8);
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px sans-serif';
             ctx.textAlign = 'center';
-            
             data.forEach((d, i) => {
-                if (i % labelInterval === 0 || i === data.length - 1) {
-                    const x = padding.left + (chartWidth / (data.length - 1)) * i;
-                    const dateStr = d.date.slice(5);
-                    ctx.fillText(dateStr, x, height - padding.bottom + 20);
+                if (i % interval === 0 || i === data.length - 1) {
+                    const x = padding.left + (chartW / (data.length - 1)) * i;
+                    ctx.fillText(d.date.slice(5), x, height - padding.bottom + 18);
                 }
             });
             
-            canvas.onmousemove = function(e) {
+            canvas.onmousemove = (e) => {
                 const rect = canvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
+                const mx = e.clientX - rect.left;
+                const my = e.clientY - rect.top;
                 
-                let found = false;
-                data.forEach((d, i) => {
-                    const x = padding.left + (chartWidth / (data.length - 1)) * i;
-                    const y = padding.top + chartHeight - ((d.count - minCount) / range) * chartHeight;
-                    
-                    const distance = Math.sqrt(Math.pow(mouseX - x, 2) + Math.pow(mouseY - y, 2));
-                    
-                    if (distance < 15) {
-                        const tooltip = document.getElementById('trendTooltip');
-                        tooltip.style.left = (x + 15) + 'px';
-                        tooltip.style.top = (y - 40) + 'px';
-                        tooltip.classList.remove('hidden');
-                        document.getElementById('tooltipDate').textContent = d.date;
-                        
-                        let tooltipContent = d.count + '只涨停';
-                        if (d.change !== undefined) {
-                            const changeSign = d.change >= 0 ? '+' : '';
-                            tooltipContent += ' | 上证' + changeSign + d.change.toFixed(2) + '%';
-                        }
-                        document.getElementById('tooltipCount').textContent = tooltipContent;
-                        found = true;
+                let found = null;
+                for (const p of points) {
+                    if (Math.sqrt((mx - p.x) ** 2 + (my - p.y) ** 2) < 15) {
+                        found = p;
+                        break;
                     }
-                });
+                }
                 
-                if (!found) {
-                    document.getElementById('trendTooltip').classList.add('hidden');
+                if (found) {
+                    tooltip.classList.remove('hidden');
+                    tooltip.style.left = (found.x + 10) + 'px';
+                    tooltip.style.top = (found.y - 50) + 'px';
+                    tooltip.innerHTML = `
+                        <div class="text-slate-400 text-xs">${found.data.date}</div>
+                        <div class="text-white font-bold">${found.data.count}只涨停</div>
+                    `;
+                } else {
+                    tooltip.classList.add('hidden');
                 }
             };
             
-            canvas.onmouseleave = function() {
-                document.getElementById('trendTooltip').classList.add('hidden');
-            };
-        }
-
-        async function switchTrendDays(days) {
-            currentTrendDays = days;
-            
-            document.querySelectorAll('.trend-line-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`.trend-line-btn[data-days="${days}"]`).classList.add('active');
-            
-            trendData = await getTrendData(days);
-            drawTrendChart(trendData);
+            canvas.onmouseleave = () => tooltip.classList.add('hidden');
         }
 
         function filterByBoard(minBoard) {
-            currentFilter = minBoard;
+            state.currentFilter = minBoard;
             
             document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('bg-red-600', 'text-white');
-                btn.classList.add('bg-gray-700');
+                btn.classList.remove('active');
+                if (parseInt(btn.dataset.filter) === minBoard) {
+                    btn.classList.add('active');
+                }
             });
             
-            event.target.classList.remove('bg-gray-700');
-            event.target.classList.add('bg-red-600', 'text-white');
-            
-            if (minBoard === null) {
-                renderStockList(stockData);
+            if (minBoard === 0) {
+                state.filteredStocks = [...state.stocks];
             } else {
-                const filtered = stockData.filter(s => s.board >= minBoard);
-                renderStockList(filtered);
+                state.filteredStocks = state.stocks.filter(s => s.board >= minBoard);
             }
+            
+            renderStockList(state.filteredStocks);
         }
 
-        async function refreshData() {
-            const icon = document.getElementById('refreshIcon');
-            icon.classList.add('auto-refresh');
+        async function switchTrendDays(days) {
+            state.trendDays = days;
             
-            document.getElementById('stockList').innerHTML = `
-                <div class="py-8 text-center text-gray-500">
-                    <svg class="animate-spin h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+            document.querySelectorAll('.trend-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (parseInt(btn.dataset.days) === days) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            state.trendData = await fetchTrendData(days);
+            drawTrendChart(state.trendData);
+        }
+
+        async function refreshAllData() {
+            if (state.loading) return;
+            state.loading = true;
+            
+            const icon = document.getElementById('refreshIcon');
+            icon.classList.add('refresh-spin');
+            
+            document.getElementById('stockListContainer').innerHTML = `
+                <div class="p-8 text-center text-slate-400">
+                    <svg class="animate-spin h-8 w-8 mx-auto mb-3 text-orange-500" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
-                    刷新数据中...
+                    <p>正在刷新数据...</p>
                 </div>
             `;
             
-            stockData = await getStockData();
-            
-            if (currentFilter !== null) {
-                stockData = stockData.filter(s => s.board >= currentFilter);
+            try {
+                state.stocks = await fetchAllStockData();
+                filterByBoard(state.currentFilter);
+                
+                updateStats(state.stocks);
+                renderBoardDistribution(state.stocks);
+                drawBoardChart(state.stocks);
+                await renderHighBoardCards(state.stocks);
+                
+                state.trendData = await fetchTrendData(state.trendDays);
+                drawTrendChart(state.trendData);
+            } catch (e) {
+                console.error('刷新数据失败:', e);
+                document.getElementById('stockListContainer').innerHTML = `
+                    <div class="p-8 text-center text-red-400">
+                        <p class="mb-3">数据加载失败</p>
+                        <button onclick="refreshAllData()" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg text-white text-sm">
+                            重新加载
+                        </button>
+                    </div>
+                `;
             }
             
-            renderStockList(stockData);
-            
-            stockData = await getStockData();
-            updateStats(stockData);
-            renderBoardDistribution(stockData);
-            renderHotSectors(stockData);
-            drawBoardChart(stockData.slice(0, 20));
-            renderHighBoardChart(stockData.slice(0, 6));
-            
-            trendData = await getTrendData(currentTrendDays);
-            drawTrendChart(trendData);
-            
-            icon.classList.remove('auto-refresh');
+            icon.classList.remove('refresh-spin');
+            state.loading = false;
         }
 
         async function init() {
-            stockData = await getStockData();
-            
-            updateStats(stockData);
-            renderStockList(stockData);
-            renderBoardDistribution(stockData);
-            renderHotSectors(stockData);
-            drawBoardChart(stockData.slice(0, 20));
-            renderHighBoardChart(stockData.slice(0, 6));
-            
-            trendData = await getTrendData(currentTrendDays);
-            drawTrendChart(trendData);
-            
-            setInterval(refreshData, 60000);
+            await refreshAllData();
+            setInterval(refreshAllData, 5 * 60 * 1000);
         }
 
-        function drawBoardChart(data) {
-            const canvas = document.getElementById('boardChart');
-            const ctx = canvas.getContext('2d');
-            
-            const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-            ctx.scale(dpr, dpr);
-            
-            const width = rect.width;
-            const height = rect.height;
-            const padding = { top: 20, right: 30, bottom: 80, left: 100 };
-            const chartWidth = width - padding.left - padding.right;
-            const chartHeight = height - padding.top - padding.bottom;
-            
-            ctx.clearRect(0, 0, width, height);
-            
-            if (data.length === 0) {
-                ctx.fillStyle = '#9CA3AF';
-                ctx.font = '14px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('暂无数据', width / 2, height / 2);
-                return;
+        window.addEventListener('resize', () => {
+            if (state.stocks.length > 0) {
+                drawBoardChart(state.stocks);
             }
-            
-            const maxBoard = Math.max(...data.map(d => d.board), 1);
-            const barWidth = Math.min(40, (chartWidth / data.length) - 8);
-            const barGap = (chartWidth - barWidth * data.length) / (data.length + 1);
-            
-            ctx.strokeStyle = '#374151';
-            ctx.lineWidth = 1;
-            
-            for (let i = 0; i <= 5; i++) {
-                const y = padding.top + (chartHeight / 5) * i;
-                ctx.beginPath();
-                ctx.moveTo(padding.left, y);
-                ctx.lineTo(width - padding.right, y);
-                ctx.stroke();
-                
-                const value = Math.round(maxBoard - (maxBoard / 5) * i);
-                ctx.fillStyle = '#9CA3AF';
-                ctx.font = '12px sans-serif';
-                ctx.textAlign = 'right';
-                ctx.fillText(value + '板', padding.left - 10, y + 4);
-            }
-            
-            const barPositions = [];
-            
-            data.forEach((stock, i) => {
-                const x = padding.left + barGap + (barWidth + barGap) * i;
-                const barHeight = (stock.board / maxBoard) * chartHeight;
-                const y = padding.top + chartHeight - barHeight;
-                
-                barPositions.push({ x, y, width: barWidth, height: barHeight, stock });
-                
-                const gradient = ctx.createLinearGradient(x, y, x, y + barHeight);
-                if (i === 0) {
-                    gradient.addColorStop(0, '#FFD700');
-                    gradient.addColorStop(1, '#FFA500');
-                } else if (i === 1) {
-                    gradient.addColorStop(0, '#C0C0C0');
-                    gradient.addColorStop(1, '#A8A8A8');
-                } else if (i === 2) {
-                    gradient.addColorStop(0, '#CD7F32');
-                    gradient.addColorStop(1, '#B87333');
-                } else {
-                    gradient.addColorStop(0, '#EF4444');
-                    gradient.addColorStop(1, '#DC2626');
-                }
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.roundRect(x, y, barWidth, barHeight, [4, 4, 0, 0]);
-                ctx.fill();
-                
-                ctx.fillStyle = '#FFFFFF';
-                ctx.font = 'bold 14px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(stock.board + '', x + barWidth / 2, y - 8);
-                
-                ctx.save();
-                ctx.translate(x + barWidth / 2, height - padding.bottom + 15);
-                ctx.rotate(-Math.PI / 4);
-                ctx.fillStyle = '#E5E7EB';
-                ctx.font = '11px sans-serif';
-                ctx.textAlign = 'right';
-                const displayName = stock.name.length > 4 ? stock.name.slice(0, 4) + '..' : stock.name;
-                ctx.fillText(displayName, 0, 0);
-                ctx.restore();
-            });
-            
-            canvas.onmousemove = function(e) {
-                const rect = canvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-                
-                let found = false;
-                barPositions.forEach(bar => {
-                    if (mouseX >= bar.x && mouseX <= bar.x + bar.width &&
-                        mouseY >= bar.y && mouseY <= bar.y + bar.height) {
-                        const tooltip = document.getElementById('boardTooltip');
-                        tooltip.style.left = (bar.x + bar.width / 2) + 'px';
-                        tooltip.style.top = (bar.y - 50) + 'px';
-                        tooltip.classList.remove('hidden');
-                        document.getElementById('boardTooltipName').textContent = bar.stock.name;
-                        document.getElementById('boardTooltipInfo').textContent = 
-                            bar.stock.code + ' | ' + bar.stock.board + '连板 | ¥' + bar.stock.price.toFixed(2);
-                        found = true;
-                    }
-                });
-                
-                if (!found) {
-                    document.getElementById('boardTooltip').classList.add('hidden');
-                }
-            };
-            
-            canvas.onmouseleave = function() {
-                document.getElementById('boardTooltip').classList.add('hidden');
-            };
-        }
-
-        async function renderHighBoardChart(stocks) {
-            const container = document.getElementById('highBoardContainer');
-            
-            if (stocks.length === 0) {
-                container.innerHTML = '<div class="text-gray-500 text-center py-8 col-span-full">暂无高标股数据</div>';
-                return;
-            }
-
-            container.innerHTML = '';
-            
-            for (const stock of stocks) {
-                const cardHtml = `
-                    <div class="bg-gray-900 rounded-lg p-4 border border-gray-700">
-                        <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <span class="font-bold text-lg">${stock.name}</span>
-                                <span class="text-gray-400 text-sm ml-2">${stock.code}</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="bg-gradient-to-r from-red-500 to-orange-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                                    ${stock.board}连板
-                                </span>
-                                <span id="status-${stock.code}" class="w-3 h-3 rounded-full bg-gray-500"></span>
-                            </div>
-                        </div>
-                        <div class="relative">
-                            <canvas id="chart-${stock.code}" class="w-full" style="height: 120px;"></canvas>
-                        </div>
-                        <div class="flex justify-between text-xs text-gray-500 mt-2">
-                            <span>09:30</span>
-                            <span>11:30</span>
-                            <span>13:00</span>
-                            <span>15:00</span>
-                        </div>
-                        <div id="info-${stock.code}" class="text-xs text-gray-400 mt-2 text-center">
-                            加载分时数据...
-                        </div>
-                    </div>
-                `;
-                container.innerHTML += cardHtml;
-            }
-            
-            for (const stock of stocks) {
-                try {
-                    await fetchAndDrawIntraday(stock);
-                } catch (e) {
-                    console.error(`获取${stock.name}分时数据失败:`, e);
-                    const infoEl = document.getElementById(`info-${stock.code}`);
-                    if (infoEl) {
-                        infoEl.textContent = '分时数据加载失败';
-                    }
-                }
-            }
-        }
-
-        async function fetchAndDrawIntraday(stock) {
-            const market = stock.code.startsWith('6') ? 1 : 0;
-            const url = `https://push2his.eastmoney.com/api/qt/stock/trends2/get?secid=${market}.${stock.code}&fields1=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13&fields2=f51,f52,f53,f54,f55,f56,f57,f58&iscr=0`;
-            
-            const response = await fetch(url);
-            const result = await response.json();
-            
-            if (result && result.data && result.data.trends) {
-                const preClose = result.data.preClose;
-                const trends = result.data.trends;
-                
-                const intradayData = trends.map(t => {
-                    const parts = t.split(',');
-                    const time = parts[0].split(' ')[1];
-                    const price = parseFloat(parts[2]);
-                    const avgPrice = parseFloat(parts[7]);
-                    const volume = parseInt(parts[5]);
-                    return { time, price, avgPrice, volume };
-                });
-                
-                const limitUpPrice = preClose * 1.1;
-                const limitDownPrice = preClose * 0.9;
-                
-                let status = 'unknown';
-                let statusColor = 'bg-gray-500';
-                let statusText = '未知';
-                
-                const lastData = intradayData[intradayData.length - 1];
-                const lastPrice = lastData.price;
-                const priceDiff = Math.abs(lastPrice - limitUpPrice);
-                
-                if (priceDiff < 0.01) {
-                    const recentVolumes = intradayData.slice(-30).map(d => d.volume);
-                    const avgVolume = recentVolumes.reduce((a, b) => a + b, 0) / recentVolumes.length;
-                    const lastVolume = lastData.volume;
-                    
-                    if (lastVolume < avgVolume * 0.3) {
-                        status = 'sealed';
-                        statusColor = 'bg-green-500';
-                        statusText = '缩量封死';
-                    } else {
-                        status = 'reopened';
-                        statusColor = 'bg-yellow-500';
-                        statusText = '开口回封';
-                    }
-                } else if (lastPrice < limitUpPrice * 0.98) {
-                    status = 'broken';
-                    statusColor = 'bg-red-500';
-                    statusText = '炸板跳水';
-                } else {
-                    status = 'near';
-                    statusColor = 'bg-orange-500';
-                    statusText = '接近涨停';
-                }
-                
-                const statusEl = document.getElementById(`status-${stock.code}`);
-                if (statusEl) {
-                    statusEl.className = `w-3 h-3 rounded-full ${statusColor}`;
-                }
-                
-                const infoEl = document.getElementById(`info-${stock.code}`);
-                if (infoEl) {
-                    const changePercent = ((lastPrice - preClose) / preClose * 100).toFixed(2);
-                    infoEl.innerHTML = `现价: ¥${lastPrice.toFixed(2)} | 涨幅: <span class="${changePercent >= 0 ? 'text-red-400' : 'text-green-400'}">${changePercent >= 0 ? '+' : ''}${changePercent}%</span> | ${statusText}`;
-                }
-                
-                drawIntradayChart(stock.code, intradayData, preClose, limitUpPrice);
-            }
-        }
-
-        function drawIntradayChart(code, data, preClose, limitUpPrice) {
-            const canvas = document.getElementById(`chart-${code}`);
-            if (!canvas) return;
-            
-            const ctx = canvas.getContext('2d');
-            
-            const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * dpr;
-            canvas.height = rect.height * dpr;
-            ctx.scale(dpr, dpr);
-            
-            const width = rect.width;
-            const height = rect.height;
-            const padding = { top: 5, right: 5, bottom: 5, left: 5 };
-            const chartWidth = width - padding.left - padding.right;
-            const chartHeight = height - padding.top - padding.bottom;
-            
-            ctx.clearRect(0, 0, width, height);
-            
-            const prices = data.map(d => d.price);
-            const minPrice = Math.min(...prices, preClose * 0.9);
-            const maxPrice = Math.max(...prices, limitUpPrice * 1.01);
-            const range = maxPrice - minPrice;
-            
-            ctx.strokeStyle = '#374151';
-            ctx.lineWidth = 0.5;
-            ctx.setLineDash([2, 2]);
-            
-            const limitUpY = padding.top + chartHeight - ((limitUpPrice - minPrice) / range) * chartHeight;
-            ctx.beginPath();
-            ctx.moveTo(padding.left, limitUpY);
-            ctx.lineTo(width - padding.right, limitUpY);
-            ctx.stroke();
-            
-            ctx.fillStyle = '#EF4444';
-            ctx.font = '9px sans-serif';
-            ctx.textAlign = 'right';
-            ctx.fillText('涨停', width - padding.right - 2, limitUpY - 2);
-            
-            const preCloseY = padding.top + chartHeight - ((preClose - minPrice) / range) * chartHeight;
-            ctx.strokeStyle = '#6B7280';
-            ctx.beginPath();
-            ctx.moveTo(padding.left, preCloseY);
-            ctx.lineTo(width - padding.right, preCloseY);
-            ctx.stroke();
-            
-            ctx.setLineDash([]);
-            
-            const gradient = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
-            gradient.addColorStop(0, 'rgba(239, 68, 68, 0.2)');
-            gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
-            
-            ctx.beginPath();
-            ctx.moveTo(padding.left, height - padding.bottom);
-            
-            data.forEach((d, i) => {
-                const x = padding.left + (chartWidth / (data.length - 1)) * i;
-                const y = padding.top + chartHeight - ((d.price - minPrice) / range) * chartHeight;
-                ctx.lineTo(x, y);
-            });
-            
-            ctx.lineTo(width - padding.right, height - padding.bottom);
-            ctx.closePath();
-            ctx.fillStyle = gradient;
-            ctx.fill();
-            
-            ctx.beginPath();
-            ctx.strokeStyle = '#EF4444';
-            ctx.lineWidth = 1.5;
-            
-            data.forEach((d, i) => {
-                const x = padding.left + (chartWidth / (data.length - 1)) * i;
-                const y = padding.top + chartHeight - ((d.price - minPrice) / range) * chartHeight;
-                
-                if (i === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
-            });
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.strokeStyle = '#FBBF24';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([3, 3]);
-            
-            data.forEach((d, i) => {
-                const x = padding.left + (chartWidth / (data.length - 1)) * i;
-                const y = padding.top + chartHeight - ((d.avgPrice - minPrice) / range) * chartHeight;
-                
-                if (i === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
-            });
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
-
-        window.addEventListener('resize', function() {
-            if (trendData.length > 0) {
-                drawTrendChart(trendData);
-            }
-            if (stockData.length > 0) {
-                drawBoardChart(stockData.slice(0, 20));
-                renderHighBoardChart(stockData.slice(0, 6));
+            if (state.trendData.length > 0) {
+                drawTrendChart(state.trendData);
             }
         });
 
