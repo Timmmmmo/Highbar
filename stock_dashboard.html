@@ -96,6 +96,15 @@
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         }
         
+        .trend-line-btn {
+            transition: all 0.2s;
+        }
+        
+        .trend-line-btn.active {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+        }
+        
         @media (max-width: 768px) {
             .grid-cols-4 {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -112,7 +121,7 @@
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h1 class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
-                        🏆 A股高标股Dashboard
+                        A股高标股Dashboard
                     </h1>
                     <p class="text-gray-400 mt-2">近30个交易日连板高度排行 · 实时更新</p>
                 </div>
@@ -201,11 +210,22 @@
         </div>
 
         <div class="mt-8 bg-gray-800 rounded-xl p-6 border border-gray-700">
-            <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                <span>📈</span> 近30日连板趋势
-            </h3>
-            <div id="trendChart" class="h-48 flex items-end justify-between gap-1">
-                <div class="text-gray-500 text-center py-4">加载中...</div>
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
+                <h3 class="text-lg font-semibold flex items-center gap-2">
+                    <span>📈</span> 连板趋势连线图
+                </h3>
+                <div class="flex gap-2">
+                    <button onclick="switchTrendDays(30)" class="trend-line-btn active px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-days="30">30天</button>
+                    <button onclick="switchTrendDays(60)" class="trend-line-btn px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-days="60">60天</button>
+                    <button onclick="switchTrendDays(90)" class="trend-line-btn px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition text-sm" data-days="90">90天</button>
+                </div>
+            </div>
+            <div class="relative">
+                <canvas id="trendCanvas" class="w-full" style="height: 300px;"></canvas>
+                <div id="trendTooltip" class="absolute hidden bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm pointer-events-none z-10">
+                    <div id="tooltipDate" class="text-gray-400"></div>
+                    <div id="tooltipCount" class="text-white font-bold"></div>
+                </div>
             </div>
         </div>
 
@@ -218,13 +238,8 @@
     <script>
         let stockData = [];
         let currentFilter = null;
-
-        // API地址配置
-        // 本地开发: http://localhost:5000
-        // 生产环境: https://timzhao.pythonanywhere.com
-        const API_BASE = window.location.hostname === 'localhost' 
-            ? 'http://localhost:5000' 
-            : 'https://timzhao.pythonanywhere.com';
+        let currentTrendDays = 30;
+        let trendData = [];
 
         function getStockData() {
             return new Promise(async (resolve, reject) => {
@@ -406,37 +421,175 @@
             }).join('');
         }
 
-        async function renderTrendChart() {
-            const container = document.getElementById('trendChart');
+        function generateTrendData(days) {
+            const data = [];
+            const today = new Date();
             
-            try {
-                const trendData = [];
-                for (let i = 6; i >= 0; i--) {
-                    const date = new Date();
-                    date.setDate(date.getDate() - i);
-                    trendData.push({
-                        date: date.toISOString().split('T')[0],
-                        count: Math.floor(Math.random() * 30) + 20
-                    });
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                
+                const dayOfWeek = date.getDay();
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    continue;
                 }
                 
-                const maxCount = Math.max(...trendData.map(d => d.count), 1);
-                
-                container.innerHTML = trendData.map(d => {
-                    const height = d.count > 0 ? (d.count / maxCount) * 100 : 2;
-                    const date = new Date(d.date);
-                    const dateStr = date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-                    return `
-                        <div class="flex-1 flex flex-col items-center gap-1">
-                            <div class="w-full bg-gradient-to-t from-red-500 to-orange-500 rounded-t transition-all hover:from-red-400 hover:to-orange-400" style="height: ${height}%" title="${d.count}只涨停"></div>
-                            <span class="text-xs text-gray-500">${dateStr.slice(-5)}</span>
-                        </div>
-                    `;
-                }).join('');
-            } catch (e) {
-                console.log('获取趋势数据失败:', e.message);
-                container.innerHTML = '<div class="text-gray-500 text-center py-4">加载失败</div>';
+                data.push({
+                    date: date.toISOString().split('T')[0],
+                    count: Math.floor(Math.random() * 40) + 20
+                });
             }
+            
+            return data;
+        }
+
+        function drawTrendChart(data) {
+            const canvas = document.getElementById('trendCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            const width = rect.width;
+            const height = rect.height;
+            const padding = { top: 20, right: 20, bottom: 40, left: 50 };
+            const chartWidth = width - padding.left - padding.right;
+            const chartHeight = height - padding.top - padding.bottom;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            const maxCount = Math.max(...data.map(d => d.count), 1);
+            const minCount = Math.min(...data.map(d => d.count), 0);
+            const range = maxCount - minCount || 1;
+            
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 1;
+            
+            for (let i = 0; i <= 5; i++) {
+                const y = padding.top + (chartHeight / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(width - padding.right, y);
+                ctx.stroke();
+                
+                const value = Math.round(maxCount - (range / 5) * i);
+                ctx.fillStyle = '#9CA3AF';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(value.toString(), padding.left - 10, y + 4);
+            }
+            
+            const gradient = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
+            gradient.addColorStop(0, 'rgba(239, 68, 68, 0.3)');
+            gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
+            
+            ctx.beginPath();
+            ctx.moveTo(padding.left, height - padding.bottom);
+            
+            data.forEach((d, i) => {
+                const x = padding.left + (chartWidth / (data.length - 1)) * i;
+                const y = padding.top + chartHeight - ((d.count - minCount) / range) * chartHeight;
+                
+                if (i === 0) {
+                    ctx.lineTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            
+            ctx.lineTo(width - padding.right, height - padding.bottom);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.strokeStyle = '#EF4444';
+            ctx.lineWidth = 2;
+            
+            data.forEach((d, i) => {
+                const x = padding.left + (chartWidth / (data.length - 1)) * i;
+                const y = padding.top + chartHeight - ((d.count - minCount) / range) * chartHeight;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+            
+            data.forEach((d, i) => {
+                const x = padding.left + (chartWidth / (data.length - 1)) * i;
+                const y = padding.top + chartHeight - ((d.count - minCount) / range) * chartHeight;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = '#EF4444';
+                ctx.fill();
+                ctx.strokeStyle = '#FEE2E2';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+            
+            const labelInterval = Math.ceil(data.length / 10);
+            ctx.fillStyle = '#9CA3AF';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            
+            data.forEach((d, i) => {
+                if (i % labelInterval === 0 || i === data.length - 1) {
+                    const x = padding.left + (chartWidth / (data.length - 1)) * i;
+                    const dateStr = d.date.slice(5);
+                    ctx.fillText(dateStr, x, height - padding.bottom + 20);
+                }
+            });
+            
+            canvas.onmousemove = function(e) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                let found = false;
+                data.forEach((d, i) => {
+                    const x = padding.left + (chartWidth / (data.length - 1)) * i;
+                    const y = padding.top + chartHeight - ((d.count - minCount) / range) * chartHeight;
+                    
+                    const distance = Math.sqrt(Math.pow(mouseX - x, 2) + Math.pow(mouseY - y, 2));
+                    
+                    if (distance < 10) {
+                        const tooltip = document.getElementById('trendTooltip');
+                        tooltip.style.left = (x + 10) + 'px';
+                        tooltip.style.top = (y - 30) + 'px';
+                        tooltip.classList.remove('hidden');
+                        document.getElementById('tooltipDate').textContent = d.date;
+                        document.getElementById('tooltipCount').textContent = d.count + '只涨停';
+                        found = true;
+                    }
+                });
+                
+                if (!found) {
+                    document.getElementById('trendTooltip').classList.add('hidden');
+                }
+            };
+            
+            canvas.onmouseleave = function() {
+                document.getElementById('trendTooltip').classList.add('hidden');
+            };
+        }
+
+        function switchTrendDays(days) {
+            currentTrendDays = days;
+            
+            document.querySelectorAll('.trend-line-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`.trend-line-btn[data-days="${days}"]`).classList.add('active');
+            
+            trendData = generateTrendData(days);
+            drawTrendChart(trendData);
         }
 
         function filterByBoard(minBoard) {
@@ -484,7 +637,9 @@
             updateStats(stockData);
             renderBoardDistribution(stockData);
             renderHotSectors(stockData);
-            renderTrendChart();
+            
+            trendData = generateTrendData(currentTrendDays);
+            drawTrendChart(trendData);
             
             icon.classList.remove('auto-refresh');
         }
@@ -496,10 +651,18 @@
             renderStockList(stockData);
             renderBoardDistribution(stockData);
             renderHotSectors(stockData);
-            renderTrendChart();
+            
+            trendData = generateTrendData(currentTrendDays);
+            drawTrendChart(trendData);
             
             setInterval(refreshData, 60000);
         }
+
+        window.addEventListener('resize', function() {
+            if (trendData.length > 0) {
+                drawTrendChart(trendData);
+            }
+        });
 
         init();
     </script>
